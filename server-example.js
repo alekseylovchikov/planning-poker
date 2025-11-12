@@ -7,9 +7,70 @@
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
+import http from 'http';
+import { readFileSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const PORT = process.env.PORT || 8080;
-const wss = new WebSocketServer({ port: PORT });
+
+// Создаем HTTP сервер для health check и статических файлов
+const server = http.createServer((req, res) => {
+  // Health check endpoint
+  if (req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', service: 'planning-poker' }));
+    return;
+  }
+
+  // Раздача статических файлов из dist
+  let filePath = join(__dirname, 'dist', req.url === '/' ? 'index.html' : req.url);
+  
+  // Убираем query параметры из пути
+  if (filePath.includes('?')) {
+    filePath = filePath.split('?')[0];
+  }
+  
+  // Если файл не найден, отдаем index.html (для SPA routing)
+  if (!existsSync(filePath)) {
+    filePath = join(__dirname, 'dist', 'index.html');
+  }
+
+  if (existsSync(filePath)) {
+    const ext = filePath.split('.').pop();
+    const contentTypes = {
+      'html': 'text/html',
+      'js': 'application/javascript',
+      'css': 'text/css',
+      'json': 'application/json',
+      'png': 'image/png',
+      'jpg': 'image/jpeg',
+      'svg': 'image/svg+xml',
+      'ico': 'image/x-icon',
+    };
+    
+    const contentType = contentTypes[ext] || 'application/octet-stream';
+    
+    try {
+      const content = readFileSync(filePath);
+      res.writeHead(200, { 'Content-Type': contentType });
+      res.end(content);
+    } catch (err) {
+      console.error('Error serving file:', err);
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end('Internal Server Error');
+    }
+  } else {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not Found');
+  }
+});
+
+// Создаем WebSocket сервер на том же HTTP сервере
+const wss = new WebSocketServer({ server });
 
 // Хранилище состояния игры
 let gameState = {
@@ -162,5 +223,11 @@ wss.on('connection', (ws) => {
 // Периодическое обновление статуса онлайн
 setInterval(updateOnlineStatus, 5000);
 
-console.log(`WebSocket сервер запущен на порту ${PORT}`);
+// Запускаем HTTP сервер
+server.listen(PORT, () => {
+  console.log(`Сервер запущен на порту ${PORT}`);
+  console.log(`HTTP сервер: http://localhost:${PORT}`);
+  console.log(`WebSocket сервер: ws://localhost:${PORT}`);
+  console.log(`Health check: http://localhost:${PORT}/health`);
+});
 
