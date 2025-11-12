@@ -68,14 +68,24 @@ wss.on('connection', (ws) => {
         case 'join': {
           const { name } = message.payload;
           
-          // Проверка на уникальность имени
-          const nameExists = gameState.participants.some(
+          // Проверяем, есть ли уже участник с таким именем (офлайн)
+          const existingParticipant = gameState.participants.find(
             (p) => p.name.toLowerCase() === name.toLowerCase()
           );
           
-          if (nameExists) {
-            ws.send(JSON.stringify({ type: 'name_taken' }));
-            return;
+          if (existingParticipant) {
+            // Если участник уже существует и офлайн, переподключаем его
+            if (!existingParticipant.isOnline) {
+              existingParticipant.isOnline = true;
+              ws.userId = existingParticipant.id;
+              console.log(`Участник переподключился: ${name} (${existingParticipant.id})`);
+              broadcastState();
+              break;
+            } else {
+              // Если участник онлайн, имя занято
+              ws.send(JSON.stringify({ type: 'name_taken' }));
+              return;
+            }
           }
           
           // Создание нового участника

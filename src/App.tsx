@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { NameInput } from "./components/NameInput";
 import { ParticipantsList } from "./components/ParticipantsList";
 import { VotingCards } from "./components/VotingCards";
@@ -12,16 +12,16 @@ const getWebSocketUrl = () => {
   const envUrl = import.meta.env.VITE_WS_URL;
   if (envUrl) {
     // Если URL начинается с ws:// или wss://, используем как есть
-    if (envUrl.startsWith('ws://') || envUrl.startsWith('wss://')) {
+    if (envUrl.startsWith("ws://") || envUrl.startsWith("wss://")) {
       return envUrl;
     }
     // Если URL без протокола, определяем автоматически
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     return `${protocol}//${envUrl}`;
   }
   // Для разработки используем ws://localhost
-  return window.location.protocol === 'https:' 
-    ? "wss://localhost:8080" 
+  return window.location.protocol === "https:"
+    ? "wss://localhost:8080"
     : "ws://localhost:8080";
 };
 
@@ -33,24 +33,48 @@ function App() {
   );
   const [selectedVote, setSelectedVote] = useState<VoteValue | null>(null);
   const [isJoining, setIsJoining] = useState(false);
+  const hasAttemptedJoinRef = useRef(false);
 
-  const { isConnected, gameState, error, join, vote, reset, reveal, setOnNameTaken } =
-    useWebSocket(WS_URL);
+  const {
+    isConnected,
+    gameState,
+    error,
+    join,
+    vote,
+    reset,
+    reveal,
+    setOnNameTaken,
+  } = useWebSocket(WS_URL);
 
   useEffect(() => {
     setOnNameTaken(() => {
       setUserName(null);
       localStorage.removeItem("userName");
       setIsJoining(false);
+      hasAttemptedJoinRef.current = false;
     });
   }, [setOnNameTaken]);
 
+  // Автоматическое присоединение при подключении или переподключении
   useEffect(() => {
-    if (userName && isConnected && !isJoining) {
-      setIsJoining(true);
-      join(userName);
+    if (userName && isConnected && !hasAttemptedJoinRef.current) {
+      hasAttemptedJoinRef.current = true;
+      setTimeout(() => {
+        setIsJoining(true);
+        join(userName);
+      }, 0);
     }
-  }, [userName, isConnected, join, isJoining]);
+  }, [userName, isConnected, join]);
+
+  // Сбрасываем флаг присоединения при отключении для возможности переподключения
+  useEffect(() => {
+    if (!isConnected) {
+      hasAttemptedJoinRef.current = false;
+      setTimeout(() => {
+        setIsJoining(false);
+      }, 0);
+    }
+  }, [isConnected]);
 
   const handleNameSubmit = (name: string) => {
     setUserName(name);
@@ -75,9 +99,11 @@ function App() {
   // Сбрасываем выбранный голос, когда голосование сброшено
   useEffect(() => {
     if (currentParticipant && !currentParticipant.hasVoted) {
-      setSelectedVote(null);
+      setTimeout(() => {
+        setSelectedVote(null);
+      }, 0);
     }
-  }, [currentParticipant?.hasVoted]);
+  }, [currentParticipant]);
 
   // Если пользователь не ввел имя, показываем форму ввода
   if (!userName) {
