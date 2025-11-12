@@ -1,4 +1,4 @@
-import { useState, FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -53,4 +53,3 @@ export const NameInput = ({ onSubmit, error, isLoading }: NameInputProps) => {
     </div>
   );
 };
-

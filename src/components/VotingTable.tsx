@@ -1,4 +1,4 @@
-import type { Participant, VoteValue } from "../types";
+import type { Participant } from "../types";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import styles from "./VotingTable.module.scss";
@@ -47,7 +47,7 @@ export const VotingTable = ({
               ))}
             </div>
           )}
-          
+
           <div className={styles.actions}>
             <Button
               onClick={onReset}
@@ -70,4 +70,3 @@ export const VotingTable = ({
     </Card>
   );
 };
-

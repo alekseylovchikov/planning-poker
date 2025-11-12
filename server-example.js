@@ -8,7 +8,8 @@
 
 import { WebSocketServer, WebSocket } from 'ws';
 
-const wss = new WebSocketServer({ port: 8080 });
+const PORT = process.env.PORT || 8080;
+const wss = new WebSocketServer({ port: PORT });
 
 // Хранилище состояния игры
 let gameState = {
@@ -151,5 +152,5 @@ wss.on('connection', (ws) => {
 // Периодическое обновление статуса онлайн
 setInterval(updateOnlineStatus, 5000);
 
-console.log('WebSocket сервер запущен на ws://localhost:8080');
+console.log(`WebSocket сервер запущен на порту ${PORT}`);
 

@@ -1,0 +1,23 @@
+services:
+  # WebSocket сервер
+  - type: web
+    name: planning-poker-server
+    env: node
+    buildCommand: npm install
+    startCommand: node server-example.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: /
+    
+  # Frontend (статический сайт)
+  - type: web
+    name: planning-poker-frontend
+    env: static
+    buildCommand: npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
