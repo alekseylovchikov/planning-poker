@@ -7,8 +7,25 @@ import { useWebSocket } from "./hooks/useWebSocket";
 import type { VoteValue } from "./types";
 import styles from "./App.module.scss";
 
-// Mock WebSocket URL - в реальном приложении это будет URL вашего сервера
-const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:8080";
+// WebSocket URL - автоматически определяет протокол (ws/wss) на основе текущего протокола страницы
+const getWebSocketUrl = () => {
+  const envUrl = import.meta.env.VITE_WS_URL;
+  if (envUrl) {
+    // Если URL начинается с ws:// или wss://, используем как есть
+    if (envUrl.startsWith('ws://') || envUrl.startsWith('wss://')) {
+      return envUrl;
+    }
+    // Если URL без протокола, определяем автоматически
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${envUrl}`;
+  }
+  // Для разработки используем ws://localhost
+  return window.location.protocol === 'https:' 
+    ? "wss://localhost:8080" 
+    : "ws://localhost:8080";
+};
+
+const WS_URL = getWebSocketUrl();
 
 function App() {
   const [userName, setUserName] = useState<string | null>(
