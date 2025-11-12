@@ -7,14 +7,17 @@ WORKDIR /app
 # Копируем package.json и package-lock.json
 COPY package*.json ./
 
-# Устанавливаем зависимости
-RUN npm ci --only=production
+# Устанавливаем все зависимости (включая devDependencies для сборки)
+RUN npm ci
 
 # Копируем остальные файлы
 COPY . .
 
 # Собираем фронтенд
 RUN npm run build
+
+# Удаляем devDependencies после сборки для уменьшения размера образа
+RUN npm prune --production
 
 # Открываем порт (будет установлен через переменную окружения PORT)
 EXPOSE 8080
