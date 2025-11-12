@@ -1,0 +1,60 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  aspect-ratio: 1;
+  border: 2px solid #2a2a2a;
+  border-radius: 0.75rem;
+  background: #121212;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #fafafa;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover:not(.disabled) {
+    border-color: #10b981;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  }
+  
+  &.selected {
+    border-color: #10b981;
+    background: #10b981;
+    color: #0a0a0a;
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  }
+  
+  &.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.voteButton {
+  width: 100%;
+  background: #10b981;
+  color: #0a0a0a;
+  font-size: 1.125rem;
+  padding: 1rem;
+  
+  &:hover:not(:disabled) {
+    background: #059669;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
