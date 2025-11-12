@@ -55,6 +55,13 @@ function App() {
     (p) => p.name === userName
   );
 
+  // Сбрасываем выбранный голос, когда голосование сброшено
+  useEffect(() => {
+    if (currentParticipant && !currentParticipant.hasVoted) {
+      setSelectedVote(null);
+    }
+  }, [currentParticipant?.hasVoted]);
+
   // Если пользователь не ввел имя, показываем форму ввода
   if (!userName) {
     return (

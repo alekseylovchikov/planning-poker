@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import type { GameState, Participant, VoteValue, WebSocketMessage } from "../types";
+import type { GameState, VoteValue, WebSocketMessage } from "../types";
 
 export const useWebSocket = (url: string) => {
   const [isConnected, setIsConnected] = useState(false);
@@ -10,14 +10,23 @@ export const useWebSocket = (url: string) => {
   });
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<number | null>(null);
   const onNameTakenRef = useRef<(() => void) | null>(null);
+  const connectRef = useRef<(() => void) | null>(null);
 
   const handleMessage = useCallback((message: WebSocketMessage) => {
     switch (message.type) {
       case "state":
-        setGameState(message.payload);
-        setError(null);
+        if (message.payload) {
+          const state = message.payload as GameState;
+          // Создаем новый объект для гарантии обновления React
+          setGameState({
+            participants: [...(state.participants || [])],
+            votesRevealed: state.votesRevealed || false,
+            currentVotes: { ...(state.currentVotes || {}) },
+          });
+          setError(null);
+        }
         break;
       case "name_taken":
         setError("Это имя уже занято");
@@ -60,7 +69,9 @@ export const useWebSocket = (url: string) => {
         console.log("WebSocket disconnected");
         // Attempt to reconnect after 3 seconds
         reconnectTimeoutRef.current = setTimeout(() => {
-          connect();
+          if (connectRef.current) {
+            connectRef.current();
+          }
         }, 3000);
       };
     } catch (err) {
@@ -68,6 +79,11 @@ export const useWebSocket = (url: string) => {
       console.error("WebSocket connection error:", err);
     }
   }, [url, handleMessage]);
+
+  // Store connect function in ref so it can be called from onclose handler
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   const sendMessage = useCallback((message: WebSocketMessage) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -98,8 +114,13 @@ export const useWebSocket = (url: string) => {
   }, [sendMessage]);
 
   useEffect(() => {
-    connect();
+    // Отложенный вызов для избежания синхронного setState в эффекте
+    const timeoutId = setTimeout(() => {
+      connect();
+    }, 0);
+
     return () => {
+      clearTimeout(timeoutId);
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
@@ -124,4 +145,3 @@ export const useWebSocket = (url: string) => {
     setOnNameTaken,
   };
 };
-
