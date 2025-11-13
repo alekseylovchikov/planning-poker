@@ -10,5 +10,10 @@
     "restartPolicyMaxRetries": 10,
     "healthcheckPath": "/health",
     "healthcheckTimeout": 100
+  },
+  "$variables": {
+    "VITE_WS_URL": {
+      "description": "WebSocket URL for the application. Should be set to wss://your-app.railway.app (without port)"
+    }
   }
 }

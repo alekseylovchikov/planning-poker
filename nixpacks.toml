@@ -6,6 +6,8 @@ nixPkgs = ["nodejs_20", "npm"]
 cmds = ["npm ci"]
 
 [phases.build]
+# Переменные окружения доступны во время сборки
+# VITE_WS_URL должен быть установлен в Railway перед сборкой
 cmds = ["npm run build"]
 
 [start]
