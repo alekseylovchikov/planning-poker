@@ -123,7 +123,8 @@ function updateOnlineStatus() {
 }
 
 wss.on("connection", (ws) => {
-  console.log("Новое подключение");
+  console.log("Новое подключение WebSocket");
+  ws.userId = null; // Инициализируем userId как null
 
   ws.on("message", (data) => {
     try {
@@ -133,33 +134,84 @@ wss.on("connection", (ws) => {
         case "join": {
           const { name } = message.payload;
 
+          if (!name || name.trim() === "") {
+            ws.send(
+              JSON.stringify({
+                type: "error",
+                payload: { message: "Имя не может быть пустым" },
+              })
+            );
+            return;
+          }
+
+          const trimmedName = name.trim();
+          console.log(`Попытка присоединения: "${trimmedName}"`);
+          console.log(
+            `Текущие участники: ${gameState.participants
+              .map((p) => `${p.name} (${p.id}, online: ${p.isOnline})`)
+              .join(", ")}`
+          );
+
           // Проверяем, есть ли уже участник с таким именем
           const existingParticipant = gameState.participants.find(
-            (p) => p.name.toLowerCase() === name.toLowerCase()
+            (p) => p.name.toLowerCase() === trimmedName.toLowerCase()
           );
 
           if (existingParticipant) {
-            // Проверяем, есть ли активное соединение с этим участником
+            console.log(
+              `Найден существующий участник: ${existingParticipant.name} (${existingParticipant.id})`
+            );
+
+            // Проверяем, есть ли активное соединение с этим участником (исключая текущее соединение)
             let hasActiveConnection = false;
+            let activeConnections = [];
             wss.clients.forEach((client) => {
-              if (
-                client.userId === existingParticipant.id &&
-                client.readyState === WebSocket.OPEN
-              ) {
-                hasActiveConnection = true;
+              // Исключаем текущее соединение из проверки
+              if (client !== ws && client.userId === existingParticipant.id) {
+                activeConnections.push({
+                  userId: client.userId,
+                  readyState: client.readyState,
+                  isOpen: client.readyState === WebSocket.OPEN,
+                });
+                if (client.readyState === WebSocket.OPEN) {
+                  hasActiveConnection = true;
+                }
               }
             });
 
+            console.log(
+              `Активные соединения для ${existingParticipant.id} (исключая текущее):`,
+              activeConnections
+            );
+            console.log(`hasActiveConnection: ${hasActiveConnection}`);
+
             if (hasActiveConnection) {
-              // Если есть активное соединение, имя занято
+              // Если есть активное соединение (не текущее), имя занято
+              console.log(
+                `Имя "${trimmedName}" занято - есть активное соединение`
+              );
               ws.send(JSON.stringify({ type: "name_taken" }));
               return;
             } else {
               // Если нет активного соединения, переподключаем участника
+              console.log(
+                `Переподключение участника: ${trimmedName} (${existingParticipant.id})`
+              );
+
+              // Закрываем все старые соединения с этим userId (если они есть)
+              wss.clients.forEach((client) => {
+                if (client !== ws && client.userId === existingParticipant.id) {
+                  console.log(
+                    `Закрываем старое соединение для ${existingParticipant.id}`
+                  );
+                  client.close();
+                }
+              });
+
               existingParticipant.isOnline = true;
               ws.userId = existingParticipant.id;
               console.log(
-                `Участник переподключился: ${name} (${existingParticipant.id})`
+                `Участник переподключился: ${trimmedName} (${existingParticipant.id})`
               );
               broadcastState();
               break;
@@ -167,9 +219,10 @@ wss.on("connection", (ws) => {
           }
 
           // Создание нового участника
+          console.log(`Создание нового участника: "${trimmedName}"`);
           const participant = {
             id: generateId(),
-            name,
+            name: trimmedName,
             isOnline: true,
             vote: undefined,
             hasVoted: false,
@@ -178,7 +231,20 @@ wss.on("connection", (ws) => {
           ws.userId = participant.id;
           gameState.participants.push(participant);
 
-          console.log(`Участник присоединился: ${name} (${participant.id})`);
+          console.log(
+            `Участник присоединился: ${trimmedName} (${participant.id})`
+          );
+          console.log(`Всего участников: ${gameState.participants.length}`);
+
+          // Отправляем состояние новому участнику
+          ws.send(
+            JSON.stringify({
+              type: "state",
+              payload: gameState,
+            })
+          );
+
+          // Отправляем состояние всем остальным
           broadcastState();
           break;
         }
@@ -224,7 +290,7 @@ wss.on("connection", (ws) => {
   });
 
   ws.on("close", () => {
-    console.log("Клиент отключился");
+    console.log(`Клиент отключился, userId: ${ws.userId || "не установлен"}`);
     // Сразу обновляем статус отключившегося участника
     if (ws.userId) {
       const participant = gameState.participants.find(
@@ -232,6 +298,9 @@ wss.on("connection", (ws) => {
       );
       if (participant) {
         participant.isOnline = false;
+        console.log(
+          `Участник ${participant.name} (${participant.id}) помечен как офлайн`
+        );
       }
     }
     // Обновляем статусы всех участников
