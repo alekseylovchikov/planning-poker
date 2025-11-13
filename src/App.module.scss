@@ -20,7 +20,7 @@
   font-weight: 700;
   color: #fafafa;
   margin: 0;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -38,11 +38,11 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  
+
   &.connected {
-    background: #10b981;
+    background: #f97316;
   }
-  
+
   &.disconnected {
     background: #ef4444;
     animation: pulse 2s infinite;
@@ -50,7 +50,8 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -94,11 +95,11 @@
   .content {
     grid-template-columns: 1fr;
   }
-  
+
   .sidebar {
     order: 2;
   }
-  
+
   .main {
     order: 1;
   }
@@ -111,10 +112,9 @@
     gap: 0.5rem;
     align-items: flex-start;
   }
-  
+
   .content {
     padding: 1rem;
     gap: 1rem;
   }
 }
-
