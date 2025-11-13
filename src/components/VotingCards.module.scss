@@ -22,17 +22,17 @@
   transition: all 0.2s;
   
   &:hover:not(.disabled) {
-    border-color: #f97316;
+    border-color: #10b981;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
   }
   
   &.selected {
-    border-color: #f97316;
-    background: #f97316;
+    border-color: #10b981;
+    background: #10b981;
     color: #0a0a0a;
     transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
   }
   
   &.disabled {
@@ -43,13 +43,13 @@
 
 .voteButton {
   width: 100%;
-  background: #f97316;
+  background: #10b981;
   color: #0a0a0a;
   font-size: 1.125rem;
   padding: 1rem;
   
   &:hover:not(:disabled) {
-    background: #ea580c;
+    background: #059669;
   }
   
   &:disabled {

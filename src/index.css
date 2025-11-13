@@ -5,13 +5,13 @@
   line-height: 1.5;
   font-weight: 400;
   
-  /* Tailwind CSS v4 theme colors - Dark theme with orange accents */
+  /* Tailwind CSS v4 theme colors - Dark theme with green/orange accents */
   --color-border: hsl(0 0% 25%);
   --color-input: hsl(0 0% 20%);
-  --color-ring: hsl(24 95% 53%);
+  --color-ring: hsl(142 71% 45%);
   --color-background: hsl(0 0% 9%);
   --color-foreground: hsl(0 0% 98%);
-  --color-primary: hsl(24 95% 53%);
+  --color-primary: hsl(142 71% 45%);
   --color-primary-foreground: hsl(0 0% 9%);
   --color-secondary: hsl(0 0% 15%);
   --color-secondary-foreground: hsl(0 0% 98%);
