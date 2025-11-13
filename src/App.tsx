@@ -109,14 +109,17 @@ function App() {
     (p) => p.name === userName
   );
 
-  // Сбрасываем выбранный голос, когда голосование сброшено
+  // Сбрасываем выбранный голос только когда голосование действительно сброшено на сервере
+  // Отслеживаем изменение hasVoted с true на false - это означает reset
+  const prevHasVotedRef = useRef(currentParticipant?.hasVoted ?? false);
   useEffect(() => {
-    if (currentParticipant && !currentParticipant.hasVoted) {
-      setTimeout(() => {
-        setSelectedVote(null);
-      }, 0);
+    const currentHasVoted = currentParticipant?.hasVoted ?? false;
+    // Если hasVoted изменился с true на false - произошел reset, сбрасываем выбранную карту
+    if (prevHasVotedRef.current === true && currentHasVoted === false) {
+      setSelectedVote(null);
     }
-  }, [currentParticipant]);
+    prevHasVotedRef.current = currentHasVoted;
+  }, [currentParticipant?.hasVoted]);
 
   // Если пользователь не ввел имя, показываем форму ввода
   if (!userName) {
