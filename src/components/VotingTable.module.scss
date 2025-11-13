@@ -70,6 +70,17 @@
 .button {
   flex: 1;
   min-width: 120px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s, border-color 0.2s;
+  
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
   
   &:disabled {
     opacity: 0.5;

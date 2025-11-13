@@ -47,9 +47,17 @@
   color: #0a0a0a;
   font-size: 1.125rem;
   padding: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
   
   &:hover:not(:disabled) {
     background: #059669;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+  }
+  
+  &:active:not(:disabled) {
+    transform: translateY(0);
   }
   
   &:disabled {

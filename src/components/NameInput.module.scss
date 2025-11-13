@@ -46,9 +46,17 @@
   width: 100%;
   background: #10b981;
   color: #0a0a0a;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: #059669;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
   }
 
   &:disabled {
