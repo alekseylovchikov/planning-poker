@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { sanitizeName, validateName } from "../lib/utils";
 import styles from "./NameInput.module.scss";
 
 interface NameInputProps {
@@ -12,12 +13,40 @@ interface NameInputProps {
 
 export const NameInput = ({ onSubmit, error, isLoading }: NameInputProps) => {
   const [name, setName] = useState("");
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    // Санитизируем ввод в реальном времени
+    const sanitized = sanitizeName(inputValue);
+    setName(sanitized);
+    
+    // Очищаем ошибку валидации при изменении
+    if (validationError) {
+      setValidationError(null);
+    }
+  };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (name.trim()) {
-      onSubmit(name.trim());
+    const trimmed = name.trim();
+    
+    if (!trimmed) {
+      setValidationError("Имя не может быть пустым");
+      return;
     }
+    
+    // Валидируем имя
+    const validation = validateName(trimmed);
+    if (!validation.isValid) {
+      setValidationError(validation.errorMessage || "Некорректное имя");
+      return;
+    }
+    
+    // Отправляем санитизированное имя
+    const sanitized = sanitizeName(trimmed);
+    onSubmit(sanitized);
+    setValidationError(null);
   };
 
   return (
@@ -38,7 +67,9 @@ export const NameInput = ({ onSubmit, error, isLoading }: NameInputProps) => {
                 className={styles.input}
                 autoFocus
               />
-              {error && <p className={styles.error}>{error}</p>}
+              {(error || validationError) && (
+                <p className={styles.error}>{error || validationError}</p>
+              )}
             </div>
             <Button
               type="submit"

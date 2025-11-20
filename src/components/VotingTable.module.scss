@@ -60,6 +60,11 @@
   margin-bottom: 0.5rem;
   text-align: center;
   opacity: 0.9;
+  word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  line-height: 1.2;
 }
 
 .voteValue {

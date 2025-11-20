@@ -4,6 +4,7 @@ import { ParticipantsList } from "./components/ParticipantsList";
 import { VotingCards } from "./components/VotingCards";
 import { VotingTable } from "./components/VotingTable";
 import { useWebSocket } from "./hooks/useWebSocket";
+import { sanitizeName } from "./lib/utils";
 import type { VoteValue } from "./types";
 import styles from "./App.module.scss";
 
@@ -41,8 +42,10 @@ const getWebSocketUrl = () => {
 const WS_URL = getWebSocketUrl();
 
 function App() {
+  // Санитизируем имя при загрузке из localStorage
+  const storedName = localStorage.getItem("userName");
   const [userName, setUserName] = useState<string | null>(
-    localStorage.getItem("userName")
+    storedName ? sanitizeName(storedName) : null
   );
   const [selectedVote, setSelectedVote] = useState<VoteValue | null>(null);
   const [isJoining, setIsJoining] = useState(false);
@@ -90,11 +93,13 @@ function App() {
   }, [isConnected]);
 
   const handleNameSubmit = (name: string) => {
-    setUserName(name);
-    localStorage.setItem("userName", name);
+    // Имя уже санитизировано в NameInput, но санитизируем еще раз для безопасности
+    const sanitizedName = sanitizeName(name);
+    setUserName(sanitizedName);
+    localStorage.setItem("userName", sanitizedName);
     setIsJoining(true);
     if (isConnected) {
-      join(name);
+      join(sanitizedName);
     }
   };
 
@@ -105,8 +110,10 @@ function App() {
     }
   };
 
+  // Сравниваем санитизированные имена для поиска текущего участника
+  const sanitizedUserName = userName ? sanitizeName(userName) : null;
   const currentParticipant = gameState.participants.find(
-    (p) => p.name === userName
+    (p) => sanitizeName(p.name) === sanitizedUserName
   );
 
   // Сбрасываем выбранный голос только когда голосование действительно сброшено на сервере

@@ -1,6 +1,7 @@
 import type { Participant, VoteValue } from "../types";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
+import { sanitizeName, truncateName } from "../lib/utils";
 import styles from "./VotingTable.module.scss";
 
 interface VotingTableProps {
@@ -55,21 +56,28 @@ export const VotingTable = ({
             <p className={styles.empty}>Пока никто не проголосовал</p>
           ) : (
             <div className={styles.table}>
-              {votedParticipants.map((participant) => (
-                <div
-                  key={participant.id}
-                  className={`${styles.voteCard} ${
-                    votesRevealed ? styles.revealed : styles.hidden
-                  } ${isMinOrMax(participant.vote) ? styles.highlight : ""}`}
-                >
-                  <div className={styles.participantName}>
-                    {participant.name}
+              {votedParticipants.map((participant) => {
+                // Санитизируем имя для безопасного отображения
+                const sanitizedName = sanitizeName(participant.name);
+                const displayName = truncateName(sanitizedName, 15);
+                
+                return (
+                  <div
+                    key={participant.id}
+                    className={`${styles.voteCard} ${
+                      votesRevealed ? styles.revealed : styles.hidden
+                    } ${isMinOrMax(participant.vote) ? styles.highlight : ""}`}
+                    title={sanitizedName !== displayName ? sanitizedName : undefined}
+                  >
+                    <div className={styles.participantName}>
+                      {displayName}
+                    </div>
+                    <div className={styles.voteValue}>
+                      {votesRevealed ? participant.vote || "—" : "?"}
+                    </div>
                   </div>
-                  <div className={styles.voteValue}>
-                    {votesRevealed ? participant.vote || "—" : "?"}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

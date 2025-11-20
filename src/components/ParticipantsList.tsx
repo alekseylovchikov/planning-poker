@@ -1,5 +1,6 @@
 import type { Participant } from "../types";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { sanitizeName, truncateName } from "../lib/utils";
 import styles from "./ParticipantsList.module.scss";
 
 interface ParticipantsListProps {
@@ -21,31 +22,39 @@ export const ParticipantsList = ({
           {participants.length === 0 ? (
             <p className={styles.empty}>Нет участников</p>
           ) : (
-            participants.map((participant) => (
-              <div
-                key={participant.id}
-                className={`${styles.participant} ${
-                  participant.name === currentUserName ? styles.current : ""
-                }`}
-              >
-                <div className={styles.info}>
-                  <span className={styles.name}>{participant.name}</span>
-                  {participant.name === currentUserName && (
-                    <span className={styles.you}>(Вы)</span>
-                  )}
+            participants.map((participant) => {
+              // Санитизируем имя для безопасного отображения
+              const sanitizedName = sanitizeName(participant.name);
+              const displayName = truncateName(sanitizedName, 30);
+              const isCurrentUser = sanitizeName(currentUserName || "") === sanitizedName;
+              
+              return (
+                <div
+                  key={participant.id}
+                  className={`${styles.participant} ${
+                    isCurrentUser ? styles.current : ""
+                  }`}
+                  title={sanitizedName !== displayName ? sanitizedName : undefined}
+                >
+                  <div className={styles.info}>
+                    <span className={styles.name}>{displayName}</span>
+                    {isCurrentUser && (
+                      <span className={styles.you}>(Вы)</span>
+                    )}
+                  </div>
+                  <div className={styles.status}>
+                    <span
+                      className={`${styles.indicator} ${
+                        participant.isOnline ? styles.online : styles.offline
+                      }`}
+                    />
+                    <span className={styles.statusText}>
+                      {participant.isOnline ? "Онлайн" : "Офлайн"}
+                    </span>
+                  </div>
                 </div>
-                <div className={styles.status}>
-                  <span
-                    className={`${styles.indicator} ${
-                      participant.isOnline ? styles.online : styles.offline
-                    }`}
-                  />
-                  <span className={styles.statusText}>
-                    {participant.isOnline ? "Онлайн" : "Офлайн"}
-                  </span>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </CardContent>

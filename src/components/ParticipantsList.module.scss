@@ -37,6 +37,10 @@
 .name {
   font-weight: 500;
   color: #fafafa;
+  word-break: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
 }
 
 .you {
