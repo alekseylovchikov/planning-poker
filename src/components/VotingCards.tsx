@@ -7,6 +7,7 @@ interface VotingCardsProps {
   onSelectVote: (vote: VoteValue) => void;
   onVote: () => void;
   hasVoted: boolean;
+  votesRevealed: boolean;
 }
 
 const VOTE_VALUES: VoteValue[] = ["0.5", "1", "2", "3", "5", "8", "13", "???"];
@@ -16,7 +17,10 @@ export const VotingCards = ({
   onSelectVote,
   onVote,
   hasVoted,
+  votesRevealed,
 }: VotingCardsProps) => {
+  const isVotingDisabled = hasVoted || votesRevealed;
+
   return (
     <div className={styles.container}>
       <div className={styles.cardGrid}>
@@ -25,24 +29,27 @@ export const VotingCards = ({
             key={value}
             className={`${styles.card} ${
               selectedVote === value ? styles.selected : ""
-            } ${hasVoted ? styles.disabled : ""}`}
-            onClick={() => !hasVoted && onSelectVote(value)}
-            disabled={hasVoted}
+            } ${isVotingDisabled ? styles.disabled : ""}`}
+            onClick={() => !isVotingDisabled && onSelectVote(value)}
+            disabled={isVotingDisabled}
           >
             {value}
           </button>
         ))}
       </div>
-      
+
       <Button
         onClick={onVote}
-        disabled={!selectedVote || hasVoted}
+        disabled={!selectedVote || isVotingDisabled}
         className={styles.voteButton}
         size="lg"
       >
-        {hasVoted ? "Вы уже проголосовали" : "Проголосовать"}
+        {votesRevealed
+          ? "Карты уже открыты"
+          : hasVoted
+          ? "Вы уже проголосовали"
+          : "Проголосовать"}
       </Button>
     </div>
   );
 };
-

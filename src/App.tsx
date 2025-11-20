@@ -161,6 +161,7 @@ function App() {
               onSelectVote={setSelectedVote}
               onVote={handleVote}
               hasVoted={currentParticipant?.hasVoted || false}
+              votesRevealed={gameState.votesRevealed}
             />
           </div>
 
