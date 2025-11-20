@@ -31,10 +31,14 @@ export const VotingTable = ({
 
   const minVote = voteNumbers.length > 0 ? Math.min(...voteNumbers) : null;
   const maxVote = voteNumbers.length > 0 ? Math.max(...voteNumbers) : null;
+  const hasDifferentVotes =
+    minVote !== null && maxVote !== null && minVote !== maxVote;
 
   // Проверяем, является ли голос минимальным или максимальным
+  // Подсвечиваем только если есть разные оценки
   const isMinOrMax = (vote: VoteValue | undefined): boolean => {
-    if (!votesRevealed || !vote || vote === "???") return false;
+    if (!votesRevealed || !vote || vote === "???" || !hasDifferentVotes)
+      return false;
     const num = voteToNumber(vote);
     if (num === null) return false;
     return num === minVote || num === maxVote;
