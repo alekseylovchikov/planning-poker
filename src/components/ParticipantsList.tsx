@@ -26,21 +26,22 @@ export const ParticipantsList = ({
               // Санитизируем имя для безопасного отображения
               const sanitizedName = sanitizeName(participant.name);
               const displayName = truncateName(sanitizedName, 30);
-              const isCurrentUser = sanitizeName(currentUserName || "") === sanitizedName;
-              
+              const isCurrentUser =
+                sanitizeName(currentUserName || "") === sanitizedName;
+
               return (
                 <div
                   key={participant.id}
                   className={`${styles.participant} ${
                     isCurrentUser ? styles.current : ""
                   }`}
-                  title={sanitizedName !== displayName ? sanitizedName : undefined}
+                  title={
+                    sanitizedName !== displayName ? sanitizedName : undefined
+                  }
                 >
                   <div className={styles.info}>
                     <span className={styles.name}>{displayName}</span>
-                    {isCurrentUser && (
-                      <span className={styles.you}>(Вы)</span>
-                    )}
+                    {isCurrentUser && <span className={styles.you}>(Вы)</span>}
                   </div>
                   <div className={styles.status}>
                     <span
@@ -61,4 +62,3 @@ export const ParticipantsList = ({
     </Card>
   );
 };
-
