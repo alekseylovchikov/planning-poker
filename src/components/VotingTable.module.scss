@@ -45,6 +45,13 @@
     transform: scale(1.05);
     box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
   }
+  
+  &.highlight {
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    border-color: #f97316;
+    box-shadow: 0 4px 16px rgba(249, 115, 22, 0.5);
+    transform: scale(1.08);
+  }
 }
 
 .participantName {

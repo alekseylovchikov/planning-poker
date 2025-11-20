@@ -1,4 +1,4 @@
-import type { Participant } from "../types";
+import type { Participant, VoteValue } from "../types";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import styles from "./VotingTable.module.scss";
@@ -10,6 +10,11 @@ interface VotingTableProps {
   onReveal: () => void;
 }
 
+const voteToNumber = (vote: VoteValue | undefined): number | null => {
+  if (!vote || vote === "???") return null;
+  return parseFloat(vote);
+};
+
 export const VotingTable = ({
   participants,
   votesRevealed,
@@ -18,6 +23,22 @@ export const VotingTable = ({
 }: VotingTableProps) => {
   const votedParticipants = participants.filter((p) => p.hasVoted);
   const hasVotes = votedParticipants.length > 0;
+
+  // Вычисляем минимальные и максимальные значения голосов
+  const voteNumbers = votedParticipants
+    .map((p) => voteToNumber(p.vote))
+    .filter((num): num is number => num !== null);
+
+  const minVote = voteNumbers.length > 0 ? Math.min(...voteNumbers) : null;
+  const maxVote = voteNumbers.length > 0 ? Math.max(...voteNumbers) : null;
+
+  // Проверяем, является ли голос минимальным или максимальным
+  const isMinOrMax = (vote: VoteValue | undefined): boolean => {
+    if (!votesRevealed || !vote || vote === "???") return false;
+    const num = voteToNumber(vote);
+    if (num === null) return false;
+    return num === minVote || num === maxVote;
+  };
 
   return (
     <Card className={styles.card}>
@@ -35,7 +56,7 @@ export const VotingTable = ({
                   key={participant.id}
                   className={`${styles.voteCard} ${
                     votesRevealed ? styles.revealed : styles.hidden
-                  }`}
+                  } ${isMinOrMax(participant.vote) ? styles.highlight : ""}`}
                 >
                   <div className={styles.participantName}>
                     {participant.name}
