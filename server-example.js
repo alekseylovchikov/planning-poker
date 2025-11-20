@@ -88,16 +88,41 @@ function generateId() {
   return Math.random().toString(36).substring(2, 9);
 }
 
+// Функция для получения безопасного состояния для конкретного клиента
+function getSafeState(client) {
+  // Клонируем состояние, чтобы не мутировать оригинал
+  const clientState = JSON.parse(JSON.stringify(gameState));
+
+  // Если карты не открыты, скрываем голоса других участников
+  if (!clientState.votesRevealed) {
+    clientState.participants.forEach((p) => {
+      // Скрываем голос, если это не текущий пользователь
+      if (p.id !== client.userId) {
+        delete p.vote;
+      }
+    });
+
+    // Пересобираем currentVotes, оставляя только голос текущего пользователя
+    const userVote = clientState.currentVotes[client.userId];
+    clientState.currentVotes = {};
+    if (userVote) {
+      clientState.currentVotes[client.userId] = userVote;
+    }
+  }
+
+  return clientState;
+}
+
 // Функция для отправки состояния всем клиентам
 function broadcastState() {
-  const message = JSON.stringify({
-    type: "state",
-    payload: gameState,
-  });
-
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(message);
+      client.send(
+        JSON.stringify({
+          type: "state",
+          payload: getSafeState(client),
+        })
+      );
     }
   });
 }
@@ -240,7 +265,7 @@ wss.on("connection", (ws) => {
           ws.send(
             JSON.stringify({
               type: "state",
-              payload: gameState,
+              payload: getSafeState(ws),
             })
           );
 
@@ -312,7 +337,7 @@ wss.on("connection", (ws) => {
     ws.send(
       JSON.stringify({
         type: "state",
-        payload: gameState,
+        payload: getSafeState(ws),
       })
     );
   }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import confetti from "canvas-confetti";
 import { NameInput } from "./components/NameInput";
 import { ParticipantsList } from "./components/ParticipantsList";
 import { VotingCards } from "./components/VotingCards";
@@ -127,6 +128,68 @@ function App() {
     }
     prevHasVotedRef.current = currentHasVoted;
   }, [currentParticipant?.hasVoted]);
+
+  // Эффект для запуска фейерверка при совпадении всех оценок
+  const hasFiredFireworksRef = useRef(false);
+
+  useEffect(() => {
+    if (!gameState.votesRevealed) {
+      hasFiredFireworksRef.current = false;
+      return;
+    }
+
+    if (gameState.votesRevealed && !hasFiredFireworksRef.current) {
+      // Получаем голоса только тех, кто проголосовал
+      const validVotes = gameState.participants
+        .filter((p) => p.hasVoted && p.vote)
+        .map((p) => p.vote);
+
+      if (validVotes.length > 0) {
+        const firstVote = validVotes[0];
+        const allEqual = validVotes.every((v) => v === firstVote);
+
+        if (allEqual) {
+          hasFiredFireworksRef.current = true;
+
+          // Запускаем фейерверк
+          const duration = 3 * 1000;
+          const animationEnd = Date.now() + duration;
+          const defaults = {
+            startVelocity: 30,
+            spread: 360,
+            ticks: 60,
+            zIndex: 50, // Увеличиваем z-index чтобы было видно поверх интерфейса
+          };
+
+          const randomInRange = (min: number, max: number) => {
+            return Math.random() * (max - min) + min;
+          };
+
+          const interval: any = setInterval(function () {
+            const timeLeft = animationEnd - Date.now();
+
+            if (timeLeft <= 0) {
+              return clearInterval(interval);
+            }
+
+            const particleCount = 50 * (timeLeft / duration);
+
+            // since particles fall down, start a bit higher than random
+            confetti({
+              ...defaults,
+              particleCount,
+              origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+            });
+            confetti({
+              ...defaults,
+              particleCount,
+              origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+            });
+          }, 250);
+        }
+      }
+    }
+  }, [gameState.votesRevealed, gameState.participants]);
 
   // Если пользователь не ввел имя, показываем форму ввода
   if (!userName) {
