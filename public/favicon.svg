@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="cardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Фон -->
+  <rect width="100" height="100" rx="12" fill="url(#cardGradient)"/>
+  
+  <!-- Карта 1 -->
+  <rect x="20" y="25" width="18" height="25" rx="3" fill="#ffffff" opacity="0.9"/>
+  <text x="29" y="42" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#10b981" text-anchor="middle">8</text>
+  
+  <!-- Карта 2 -->
+  <rect x="45" y="20" width="18" height="25" rx="3" fill="#ffffff" opacity="0.9"/>
+  <text x="54" y="37" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#10b981" text-anchor="middle">5</text>
+  
+  <!-- Карта 3 -->
+  <rect x="70" y="25" width="18" height="25" rx="3" fill="#ffffff" opacity="0.9"/>
+  <text x="79" y="42" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#10b981" text-anchor="middle">13</text>
+  
+  <!-- Точки (story points) -->
+  <circle cx="30" cy="60" r="3" fill="#ffffff" opacity="0.8"/>
+  <circle cx="40" cy="60" r="3" fill="#ffffff" opacity="0.8"/>
+  <circle cx="50" cy="60" r="3" fill="#ffffff" opacity="0.8"/>
+  <circle cx="60" cy="60" r="3" fill="#ffffff" opacity="0.8"/>
+  <circle cx="70" cy="60" r="3" fill="#ffffff" opacity="0.8"/>
+</svg>
+
