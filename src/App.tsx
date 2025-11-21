@@ -48,6 +48,13 @@ function App() {
   const [userName, setUserName] = useState<string | null>(
     storedName ? sanitizeName(storedName) : null
   );
+  const [roomId, setRoomId] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("room");
+    }
+    return null;
+  });
   const [selectedVote, setSelectedVote] = useState<VoteValue | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const hasAttemptedJoinRef = useRef(false);
@@ -62,6 +69,16 @@ function App() {
     reveal,
     setOnNameTaken,
   } = useWebSocket(WS_URL);
+
+  // Обновляем URL когда получаем roomId от сервера
+  useEffect(() => {
+    if (gameState.roomId && gameState.roomId !== roomId) {
+      setRoomId(gameState.roomId);
+      const params = new URLSearchParams(window.location.search);
+      params.set("room", gameState.roomId);
+      window.history.pushState({}, "", `?${params.toString()}`);
+    }
+  }, [gameState.roomId, roomId]);
 
   useEffect(() => {
     setOnNameTaken(() => {
@@ -78,10 +95,10 @@ function App() {
       hasAttemptedJoinRef.current = true;
       setTimeout(() => {
         setIsJoining(true);
-        join(userName);
+        join(userName, roomId || undefined);
       }, 0);
     }
-  }, [userName, isConnected, join]);
+  }, [userName, isConnected, join, roomId]);
 
   // Сбрасываем флаг присоединения при отключении для возможности переподключения
   useEffect(() => {
@@ -100,7 +117,7 @@ function App() {
     localStorage.setItem("userName", sanitizedName);
     setIsJoining(true);
     if (isConnected) {
-      join(sanitizedName);
+      join(sanitizedName, roomId || undefined);
     }
   };
 
@@ -207,6 +224,18 @@ function App() {
       <div className={styles.header}>
         <h1 className={styles.title}>Planning Poker</h1>
         <div className={styles.connectionStatus}>
+          {gameState.roomId && (
+            <span
+              className={styles.roomId}
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+                alert("Ссылка скопирована!");
+              }}
+              style={{ cursor: "pointer", marginRight: "10px" }}
+            >
+              Комната: {gameState.roomId} (нажми чтобы скопировать)
+            </span>
+          )}
           <span
             className={`${styles.statusIndicator} ${
               isConnected ? styles.connected : styles.disconnected

@@ -76,22 +76,34 @@ const server = http.createServer((req, res) => {
 // Создаем WebSocket сервер на том же HTTP сервере
 const wss = new WebSocketServer({ server });
 
-// Хранилище состояния игры
-let gameState = {
-  participants: [],
-  votesRevealed: false,
-  currentVotes: {},
-};
+// Хранилище состояния комнат: roomId -> GameState
+const rooms = new Map();
 
 // Функция для генерации уникального ID
 function generateId() {
   return Math.random().toString(36).substring(2, 9);
 }
 
+// Создание новой комнаты
+function createRoom(roomId) {
+  if (!rooms.has(roomId)) {
+    rooms.set(roomId, {
+      participants: [],
+      votesRevealed: false,
+      currentVotes: {},
+      roomId: roomId
+    });
+  }
+  return rooms.get(roomId);
+}
+
 // Функция для получения безопасного состояния для конкретного клиента
-function getSafeState(client) {
+function getSafeState(client, roomId) {
+  const roomState = rooms.get(roomId);
+  if (!roomState) return null;
+
   // Клонируем состояние, чтобы не мутировать оригинал
-  const clientState = JSON.parse(JSON.stringify(gameState));
+  const clientState = JSON.parse(JSON.stringify(roomState));
 
   // Если карты не открыты, скрываем голоса других участников
   if (!clientState.votesRevealed) {
@@ -113,14 +125,17 @@ function getSafeState(client) {
   return clientState;
 }
 
-// Функция для отправки состояния всем клиентам
-function broadcastState() {
+// Функция для отправки состояния всем клиентам в комнате
+function broadcastState(roomId) {
+  const roomState = rooms.get(roomId);
+  if (!roomState) return;
+
   wss.clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
+    if (client.readyState === WebSocket.OPEN && client.roomId === roomId) {
       client.send(
         JSON.stringify({
           type: "state",
-          payload: getSafeState(client),
+          payload: getSafeState(client, roomId),
         })
       );
     }
@@ -129,27 +144,30 @@ function broadcastState() {
 
 // Функция для обновления статуса онлайн
 function updateOnlineStatus() {
-  gameState.participants.forEach((participant) => {
-    participant.isOnline = false;
-  });
+  rooms.forEach((gameState, roomId) => {
+    gameState.participants.forEach((participant) => {
+      participant.isOnline = false;
+    });
 
-  wss.clients.forEach((ws) => {
-    if (ws.userId && ws.readyState === WebSocket.OPEN) {
-      const participant = gameState.participants.find(
-        (p) => p.id === ws.userId
-      );
-      if (participant) {
-        participant.isOnline = true;
+    wss.clients.forEach((ws) => {
+      if (ws.userId && ws.roomId === roomId && ws.readyState === WebSocket.OPEN) {
+        const participant = gameState.participants.find(
+          (p) => p.id === ws.userId
+        );
+        if (participant) {
+          participant.isOnline = true;
+        }
       }
-    }
-  });
+    });
 
-  broadcastState();
+    broadcastState(roomId);
+  });
 }
 
 wss.on("connection", (ws) => {
   console.log("Новое подключение WebSocket");
   ws.userId = null; // Инициализируем userId как null
+  ws.roomId = null;
 
   ws.on("message", (data) => {
     try {
@@ -157,7 +175,7 @@ wss.on("connection", (ws) => {
 
       switch (message.type) {
         case "join": {
-          const { name } = message.payload;
+          const { name, roomId: requestedRoomId } = message.payload;
 
           if (!name || name.trim() === "") {
             ws.send(
@@ -169,112 +187,87 @@ wss.on("connection", (ws) => {
             return;
           }
 
-          const trimmedName = name.trim();
-          console.log(`Попытка присоединения: "${trimmedName}"`);
-          console.log(
-            `Текущие участники: ${gameState.participants
-              .map((p) => `${p.name} (${p.id}, online: ${p.isOnline})`)
-              .join(", ")}`
-          );
+          let roomId = requestedRoomId;
+          if (!roomId) {
+             roomId = generateId();
+             console.log(`Создана новая комната: ${roomId}`);
+          }
 
-          // Проверяем, есть ли уже участник с таким именем
+          // Проверяем существование комнаты или создаем новую
+          let gameState = rooms.get(roomId);
+          if (!gameState) {
+              if (requestedRoomId) {
+                   console.log(`Комната ${roomId} не найдена, создаем новую.`);
+              }
+              gameState = createRoom(roomId);
+          }
+
+          ws.roomId = roomId;
+          const trimmedName = name.trim();
+
+          // Проверяем, есть ли уже участник с таким именем в ЭТОЙ комнате
           const existingParticipant = gameState.participants.find(
             (p) => p.name.toLowerCase() === trimmedName.toLowerCase()
           );
 
           if (existingParticipant) {
-            console.log(
-              `Найден существующий участник: ${existingParticipant.name} (${existingParticipant.id})`
-            );
-
-            // Проверяем, есть ли активное соединение с этим участником (исключая текущее соединение)
+            // Проверяем, есть ли активное соединение с этим участником в ЭТОЙ комнате
             let hasActiveConnection = false;
-            let activeConnections = [];
             wss.clients.forEach((client) => {
-              // Исключаем текущее соединение из проверки
-              if (client !== ws && client.userId === existingParticipant.id) {
-                activeConnections.push({
-                  userId: client.userId,
-                  readyState: client.readyState,
-                  isOpen: client.readyState === WebSocket.OPEN,
-                });
+              if (client !== ws && client.userId === existingParticipant.id && client.roomId === roomId) {
                 if (client.readyState === WebSocket.OPEN) {
                   hasActiveConnection = true;
                 }
               }
             });
 
-            console.log(
-              `Активные соединения для ${existingParticipant.id} (исключая текущее):`,
-              activeConnections
-            );
-            console.log(`hasActiveConnection: ${hasActiveConnection}`);
-
             if (hasActiveConnection) {
-              // Если есть активное соединение (не текущее), имя занято
-              console.log(
-                `Имя "${trimmedName}" занято - есть активное соединение`
-              );
               ws.send(JSON.stringify({ type: "name_taken" }));
               return;
             } else {
-              // Если нет активного соединения, переподключаем участника
-              console.log(
-                `Переподключение участника: ${trimmedName} (${existingParticipant.id})`
-              );
-
-              // Закрываем все старые соединения с этим userId (если они есть)
+              // Переподключение
               wss.clients.forEach((client) => {
-                if (client !== ws && client.userId === existingParticipant.id) {
-                  console.log(
-                    `Закрываем старое соединение для ${existingParticipant.id}`
-                  );
+                if (client !== ws && client.userId === existingParticipant.id && client.roomId === roomId) {
                   client.close();
                 }
               });
 
               existingParticipant.isOnline = true;
               ws.userId = existingParticipant.id;
-              console.log(
-                `Участник переподключился: ${trimmedName} (${existingParticipant.id})`
-              );
-              broadcastState();
-              break;
+              broadcastState(roomId);
             }
+          } else {
+            // Создание нового участника
+            const participant = {
+              id: generateId(),
+              name: trimmedName,
+              isOnline: true,
+              vote: undefined,
+              hasVoted: false,
+            };
+
+            ws.userId = participant.id;
+            gameState.participants.push(participant);
           }
-
-          // Создание нового участника
-          console.log(`Создание нового участника: "${trimmedName}"`);
-          const participant = {
-            id: generateId(),
-            name: trimmedName,
-            isOnline: true,
-            vote: undefined,
-            hasVoted: false,
-          };
-
-          ws.userId = participant.id;
-          gameState.participants.push(participant);
-
-          console.log(
-            `Участник присоединился: ${trimmedName} (${participant.id})`
-          );
-          console.log(`Всего участников: ${gameState.participants.length}`);
 
           // Отправляем состояние новому участнику
           ws.send(
             JSON.stringify({
               type: "state",
-              payload: getSafeState(ws),
+              payload: getSafeState(ws, roomId),
             })
           );
 
-          // Отправляем состояние всем остальным
-          broadcastState();
+          // Отправляем состояние всем остальным в комнате
+          broadcastState(roomId);
           break;
         }
 
         case "vote": {
+          if (!ws.roomId || !ws.userId) return;
+          const gameState = rooms.get(ws.roomId);
+          if (!gameState) return;
+
           const { vote } = message.payload;
           const participant = gameState.participants.find(
             (p) => p.id === ws.userId
@@ -284,28 +277,33 @@ wss.on("connection", (ws) => {
             participant.vote = vote;
             participant.hasVoted = true;
             gameState.currentVotes[participant.id] = vote;
-            console.log(`${participant.name} проголосовал: ${vote}`);
-            broadcastState();
+            broadcastState(ws.roomId);
           }
           break;
         }
 
         case "reset": {
+          if (!ws.roomId) return;
+          const gameState = rooms.get(ws.roomId);
+          if (!gameState) return;
+
           gameState.participants.forEach((participant) => {
             participant.vote = undefined;
             participant.hasVoted = false;
           });
           gameState.votesRevealed = false;
           gameState.currentVotes = {};
-          console.log("Голоса сброшены");
-          broadcastState();
+          broadcastState(ws.roomId);
           break;
         }
 
         case "reveal": {
+          if (!ws.roomId) return;
+          const gameState = rooms.get(ws.roomId);
+          if (!gameState) return;
+
           gameState.votesRevealed = true;
-          console.log("Карты открыты");
-          broadcastState();
+          broadcastState(ws.roomId);
           break;
         }
       }
@@ -315,32 +313,19 @@ wss.on("connection", (ws) => {
   });
 
   ws.on("close", () => {
-    console.log(`Клиент отключился, userId: ${ws.userId || "не установлен"}`);
-    // Сразу обновляем статус отключившегося участника
-    if (ws.userId) {
-      const participant = gameState.participants.find(
-        (p) => p.id === ws.userId
-      );
-      if (participant) {
-        participant.isOnline = false;
-        console.log(
-          `Участник ${participant.name} (${participant.id}) помечен как офлайн`
-        );
-      }
+    if (ws.roomId && ws.userId) {
+       const gameState = rooms.get(ws.roomId);
+       if (gameState) {
+          const participant = gameState.participants.find(
+            (p) => p.id === ws.userId
+          );
+          if (participant) {
+            participant.isOnline = false;
+          }
+       }
     }
-    // Обновляем статусы всех участников
     updateOnlineStatus();
   });
-
-  // Отправка текущего состояния новому клиенту
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.send(
-      JSON.stringify({
-        type: "state",
-        payload: getSafeState(ws),
-      })
-    );
-  }
 });
 
 // Периодическое обновление статуса онлайн

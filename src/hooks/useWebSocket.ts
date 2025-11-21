@@ -21,6 +21,7 @@ export const useWebSocket = (url: string) => {
           const state = message.payload as GameState;
           // Создаем новый объект для гарантии обновления React
           setGameState({
+            roomId: state.roomId,
             participants: [...(state.participants || [])],
             votesRevealed: state.votesRevealed || false,
             currentVotes: { ...(state.currentVotes || {}) },
@@ -92,8 +93,8 @@ export const useWebSocket = (url: string) => {
   }, []);
 
   const join = useCallback(
-    (name: string) => {
-      sendMessage({ type: "join", payload: { name } });
+    (name: string, roomId?: string) => {
+      sendMessage({ type: "join", payload: { name, roomId } });
     },
     [sendMessage]
   );

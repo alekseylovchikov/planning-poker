@@ -9,13 +9,22 @@ export interface Participant {
 }
 
 export interface GameState {
+  roomId?: string;
   participants: Participant[];
   votesRevealed: boolean;
   currentVotes: Record<string, VoteValue>;
 }
 
 export interface WebSocketMessage {
-  type: "join" | "leave" | "vote" | "reset" | "reveal" | "state" | "name_taken";
+  type:
+    | "join"
+    | "leave"
+    | "vote"
+    | "reset"
+    | "reveal"
+    | "state"
+    | "name_taken"
+    | "error";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payload?: any;
 }
-
