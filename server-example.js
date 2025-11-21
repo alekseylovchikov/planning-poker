@@ -8,7 +8,7 @@
 
 import { WebSocketServer, WebSocket } from "ws";
 import http from "http";
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, statSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -19,57 +19,63 @@ const PORT = process.env.PORT || 8080;
 
 // Создаем HTTP сервер для health check и статических файлов
 const server = http.createServer((req, res) => {
-  // Health check endpoint
-  if (req.url === "/health") {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ status: "ok", service: "planning-poker" }));
-    return;
-  }
-
-  // Раздача статических файлов из dist
-  let filePath = join(
-    __dirname,
-    "dist",
-    req.url === "/" ? "index.html" : req.url
-  );
-
-  // Убираем query параметры из пути
-  if (filePath.includes("?")) {
-    filePath = filePath.split("?")[0];
-  }
-
-  // Если файл не найден, отдаем index.html (для SPA routing)
-  if (!existsSync(filePath)) {
-    filePath = join(__dirname, "dist", "index.html");
-  }
-
-  if (existsSync(filePath)) {
-    const ext = filePath.split(".").pop();
-    const contentTypes = {
-      html: "text/html",
-      js: "application/javascript",
-      css: "text/css",
-      json: "application/json",
-      png: "image/png",
-      jpg: "image/jpeg",
-      svg: "image/svg+xml",
-      ico: "image/x-icon",
-    };
-
-    const contentType = contentTypes[ext] || "application/octet-stream";
-
-    try {
-      const content = readFileSync(filePath);
-      res.writeHead(200, { "Content-Type": contentType });
-      res.end(content);
-    } catch (err) {
-      console.error("Error serving file:", err);
-      res.writeHead(500, { "Content-Type": "text/plain" });
-      res.end("Internal Server Error");
+  try {
+    // Health check endpoint
+    if (req.url === "/health") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "ok", service: "planning-poker" }));
+      return;
     }
-  } else {
-    res.writeHead(404, { "Content-Type": "text/plain" });
-    res.end("Not Found");
+
+    // Парсим URL для получения чистого пути без query параметров
+    // Используем dummy host, так как нам нужен только pathname
+    const parsedUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+    let pathname = parsedUrl.pathname;
+
+    // Раздача статических файлов из dist
+    let filePath = join(
+      __dirname,
+      "dist",
+      pathname === "/" ? "index.html" : pathname
+    );
+
+    // Если файл не найден, отдаем index.html (для SPA routing)
+    if (!existsSync(filePath) || (existsSync(filePath) && statSync(filePath).isDirectory())) {
+      filePath = join(__dirname, "dist", "index.html");
+    }
+
+    if (existsSync(filePath) && !statSync(filePath).isDirectory()) {
+      const ext = filePath.split(".").pop();
+      const contentTypes = {
+        html: "text/html",
+        js: "application/javascript",
+        css: "text/css",
+        json: "application/json",
+        png: "image/png",
+        jpg: "image/jpeg",
+        svg: "image/svg+xml",
+        ico: "image/x-icon",
+      };
+
+      const contentType = contentTypes[ext] || "application/octet-stream";
+
+      try {
+        const content = readFileSync(filePath);
+        res.writeHead(200, { "Content-Type": contentType });
+        res.end(content);
+      } catch (err) {
+        console.error("Error serving file:", err);
+        res.writeHead(500, { "Content-Type": "text/plain" });
+        res.end("Internal Server Error");
+      }
+    } else {
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("Not Found");
+    }
+  } catch (err) {
+    console.error("Request handling error:", err);
+    res.writeHead(500, { "Content-Type": "text/plain" });
+    res.end("Internal Server Error");
   }
 });
 
@@ -91,7 +97,7 @@ function createRoom(roomId) {
       participants: [],
       votesRevealed: false,
       currentVotes: {},
-      roomId: roomId,
+      roomId: roomId
     });
   }
   return rooms.get(roomId);
@@ -163,11 +169,7 @@ function updateOnlineStatus() {
       });
 
       wss.clients.forEach((ws) => {
-        if (
-          ws.userId &&
-          ws.roomId === roomId &&
-          ws.readyState === WebSocket.OPEN
-        ) {
+        if (ws.userId && ws.roomId === roomId && ws.readyState === WebSocket.OPEN) {
           const participant = gameState.participants.find(
             (p) => p.id === ws.userId
           );
@@ -197,7 +199,7 @@ wss.on("connection", (ws) => {
         case "join": {
           const { name, roomId: requestedRoomId } = message.payload || {};
 
-          if (!name || typeof name !== "string" || name.trim() === "") {
+          if (!name || typeof name !== 'string' || name.trim() === "") {
             ws.send(
               JSON.stringify({
                 type: "error",
@@ -209,17 +211,17 @@ wss.on("connection", (ws) => {
 
           let roomId = requestedRoomId;
           if (!roomId) {
-            roomId = generateId();
-            console.log(`Создана новая комната: ${roomId}`);
+             roomId = generateId();
+             console.log(`Создана новая комната: ${roomId}`);
           }
 
           // Проверяем существование комнаты или создаем новую
           let gameState = rooms.get(roomId);
           if (!gameState) {
-            if (requestedRoomId) {
-              console.log(`Комната ${roomId} не найдена, создаем новую.`);
-            }
-            gameState = createRoom(roomId);
+              if (requestedRoomId) {
+                   console.log(`Комната ${roomId} не найдена, создаем новую.`);
+              }
+              gameState = createRoom(roomId);
           }
 
           ws.roomId = roomId;
@@ -234,11 +236,7 @@ wss.on("connection", (ws) => {
             // Проверяем, есть ли активное соединение с этим участником в ЭТОЙ комнате
             let hasActiveConnection = false;
             wss.clients.forEach((client) => {
-              if (
-                client !== ws &&
-                client.userId === existingParticipant.id &&
-                client.roomId === roomId
-              ) {
+              if (client !== ws && client.userId === existingParticipant.id && client.roomId === roomId) {
                 if (client.readyState === WebSocket.OPEN) {
                   hasActiveConnection = true;
                 }
@@ -251,15 +249,11 @@ wss.on("connection", (ws) => {
             } else {
               // Переподключение
               wss.clients.forEach((client) => {
-                if (
-                  client !== ws &&
-                  client.userId === existingParticipant.id &&
-                  client.roomId === roomId
-                ) {
+                if (client !== ws && client.userId === existingParticipant.id && client.roomId === roomId) {
                   try {
-                    client.close();
+                     client.close();
                   } catch (e) {
-                    console.error("Error closing old connection:", e);
+                     console.error("Error closing old connection:", e);
                   }
                 }
               });
@@ -294,7 +288,7 @@ wss.on("connection", (ws) => {
               );
             }
           } catch (e) {
-            console.error("Error sending initial state:", e);
+             console.error("Error sending initial state:", e);
           }
 
           // Отправляем состояние всем остальным в комнате
@@ -355,21 +349,21 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => {
     try {
-      if (ws.roomId && ws.userId) {
-        const gameState = rooms.get(ws.roomId);
-        if (gameState) {
-          const participant = gameState.participants.find(
-            (p) => p.id === ws.userId
-          );
-          if (participant) {
-            participant.isOnline = false;
-          }
+        if (ws.roomId && ws.userId) {
+           const gameState = rooms.get(ws.roomId);
+           if (gameState) {
+              const participant = gameState.participants.find(
+                (p) => p.id === ws.userId
+              );
+              if (participant) {
+                participant.isOnline = false;
+              }
+           }
         }
-      }
-      // Используем nextTick или setTimeout, чтобы обновление произошло после закрытия
-      setTimeout(updateOnlineStatus, 100);
+        // Используем nextTick или setTimeout, чтобы обновление произошло после закрытия
+        setTimeout(updateOnlineStatus, 100);
     } catch (error) {
-      console.error("Error in close handler:", error);
+        console.error("Error in close handler:", error);
     }
   });
 });
