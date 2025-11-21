@@ -91,7 +91,7 @@ function createRoom(roomId) {
       participants: [],
       votesRevealed: false,
       currentVotes: {},
-      roomId: roomId
+      roomId: roomId,
     });
   }
   return rooms.get(roomId);
@@ -102,27 +102,32 @@ function getSafeState(client, roomId) {
   const roomState = rooms.get(roomId);
   if (!roomState) return null;
 
-  // Клонируем состояние, чтобы не мутировать оригинал
-  const clientState = JSON.parse(JSON.stringify(roomState));
+  try {
+    // Клонируем состояние, чтобы не мутировать оригинал
+    const clientState = JSON.parse(JSON.stringify(roomState));
 
-  // Если карты не открыты, скрываем голоса других участников
-  if (!clientState.votesRevealed) {
-    clientState.participants.forEach((p) => {
-      // Скрываем голос, если это не текущий пользователь
-      if (p.id !== client.userId) {
-        delete p.vote;
+    // Если карты не открыты, скрываем голоса других участников
+    if (!clientState.votesRevealed) {
+      clientState.participants.forEach((p) => {
+        // Скрываем голос, если это не текущий пользователь
+        if (p.id !== client.userId) {
+          delete p.vote;
+        }
+      });
+
+      // Пересобираем currentVotes, оставляя только голос текущего пользователя
+      const userVote = clientState.currentVotes[client.userId];
+      clientState.currentVotes = {};
+      if (userVote) {
+        clientState.currentVotes[client.userId] = userVote;
       }
-    });
-
-    // Пересобираем currentVotes, оставляя только голос текущего пользователя
-    const userVote = clientState.currentVotes[client.userId];
-    clientState.currentVotes = {};
-    if (userVote) {
-      clientState.currentVotes[client.userId] = userVote;
     }
-  }
 
-  return clientState;
+    return clientState;
+  } catch (error) {
+    console.error(`Error in getSafeState for room ${roomId}:`, error);
+    return null;
+  }
 }
 
 // Функция для отправки состояния всем клиентам в комнате
@@ -131,37 +136,52 @@ function broadcastState(roomId) {
   if (!roomState) return;
 
   wss.clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN && client.roomId === roomId) {
-      client.send(
-        JSON.stringify({
-          type: "state",
-          payload: getSafeState(client, roomId),
-        })
-      );
+    try {
+      if (client.readyState === WebSocket.OPEN && client.roomId === roomId) {
+        const safeState = getSafeState(client, roomId);
+        if (safeState) {
+          client.send(
+            JSON.stringify({
+              type: "state",
+              payload: safeState,
+            })
+          );
+        }
+      }
+    } catch (error) {
+      console.error(`Error broadcasting to client in room ${roomId}:`, error);
     }
   });
 }
 
 // Функция для обновления статуса онлайн
 function updateOnlineStatus() {
-  rooms.forEach((gameState, roomId) => {
-    gameState.participants.forEach((participant) => {
-      participant.isOnline = false;
-    });
+  try {
+    rooms.forEach((gameState, roomId) => {
+      gameState.participants.forEach((participant) => {
+        participant.isOnline = false;
+      });
 
-    wss.clients.forEach((ws) => {
-      if (ws.userId && ws.roomId === roomId && ws.readyState === WebSocket.OPEN) {
-        const participant = gameState.participants.find(
-          (p) => p.id === ws.userId
-        );
-        if (participant) {
-          participant.isOnline = true;
+      wss.clients.forEach((ws) => {
+        if (
+          ws.userId &&
+          ws.roomId === roomId &&
+          ws.readyState === WebSocket.OPEN
+        ) {
+          const participant = gameState.participants.find(
+            (p) => p.id === ws.userId
+          );
+          if (participant) {
+            participant.isOnline = true;
+          }
         }
-      }
-    });
+      });
 
-    broadcastState(roomId);
-  });
+      broadcastState(roomId);
+    });
+  } catch (error) {
+    console.error("Error in updateOnlineStatus:", error);
+  }
 }
 
 wss.on("connection", (ws) => {
@@ -175,9 +195,9 @@ wss.on("connection", (ws) => {
 
       switch (message.type) {
         case "join": {
-          const { name, roomId: requestedRoomId } = message.payload;
+          const { name, roomId: requestedRoomId } = message.payload || {};
 
-          if (!name || name.trim() === "") {
+          if (!name || typeof name !== "string" || name.trim() === "") {
             ws.send(
               JSON.stringify({
                 type: "error",
@@ -189,17 +209,17 @@ wss.on("connection", (ws) => {
 
           let roomId = requestedRoomId;
           if (!roomId) {
-             roomId = generateId();
-             console.log(`Создана новая комната: ${roomId}`);
+            roomId = generateId();
+            console.log(`Создана новая комната: ${roomId}`);
           }
 
           // Проверяем существование комнаты или создаем новую
           let gameState = rooms.get(roomId);
           if (!gameState) {
-              if (requestedRoomId) {
-                   console.log(`Комната ${roomId} не найдена, создаем новую.`);
-              }
-              gameState = createRoom(roomId);
+            if (requestedRoomId) {
+              console.log(`Комната ${roomId} не найдена, создаем новую.`);
+            }
+            gameState = createRoom(roomId);
           }
 
           ws.roomId = roomId;
@@ -214,7 +234,11 @@ wss.on("connection", (ws) => {
             // Проверяем, есть ли активное соединение с этим участником в ЭТОЙ комнате
             let hasActiveConnection = false;
             wss.clients.forEach((client) => {
-              if (client !== ws && client.userId === existingParticipant.id && client.roomId === roomId) {
+              if (
+                client !== ws &&
+                client.userId === existingParticipant.id &&
+                client.roomId === roomId
+              ) {
                 if (client.readyState === WebSocket.OPEN) {
                   hasActiveConnection = true;
                 }
@@ -227,8 +251,16 @@ wss.on("connection", (ws) => {
             } else {
               // Переподключение
               wss.clients.forEach((client) => {
-                if (client !== ws && client.userId === existingParticipant.id && client.roomId === roomId) {
-                  client.close();
+                if (
+                  client !== ws &&
+                  client.userId === existingParticipant.id &&
+                  client.roomId === roomId
+                ) {
+                  try {
+                    client.close();
+                  } catch (e) {
+                    console.error("Error closing old connection:", e);
+                  }
                 }
               });
 
@@ -251,12 +283,19 @@ wss.on("connection", (ws) => {
           }
 
           // Отправляем состояние новому участнику
-          ws.send(
-            JSON.stringify({
-              type: "state",
-              payload: getSafeState(ws, roomId),
-            })
-          );
+          try {
+            const safeState = getSafeState(ws, roomId);
+            if (safeState) {
+              ws.send(
+                JSON.stringify({
+                  type: "state",
+                  payload: safeState,
+                })
+              );
+            }
+          } catch (e) {
+            console.error("Error sending initial state:", e);
+          }
 
           // Отправляем состояние всем остальным в комнате
           broadcastState(roomId);
@@ -268,7 +307,9 @@ wss.on("connection", (ws) => {
           const gameState = rooms.get(ws.roomId);
           if (!gameState) return;
 
-          const { vote } = message.payload;
+          const { vote } = message.payload || {};
+          if (!vote) return;
+
           const participant = gameState.participants.find(
             (p) => p.id === ws.userId
           );
@@ -313,18 +354,23 @@ wss.on("connection", (ws) => {
   });
 
   ws.on("close", () => {
-    if (ws.roomId && ws.userId) {
-       const gameState = rooms.get(ws.roomId);
-       if (gameState) {
+    try {
+      if (ws.roomId && ws.userId) {
+        const gameState = rooms.get(ws.roomId);
+        if (gameState) {
           const participant = gameState.participants.find(
             (p) => p.id === ws.userId
           );
           if (participant) {
             participant.isOnline = false;
           }
-       }
+        }
+      }
+      // Используем nextTick или setTimeout, чтобы обновление произошло после закрытия
+      setTimeout(updateOnlineStatus, 100);
+    } catch (error) {
+      console.error("Error in close handler:", error);
     }
-    updateOnlineStatus();
   });
 });
 
