@@ -13,6 +13,7 @@ export interface GameState {
   participants: Participant[];
   votesRevealed: boolean;
   currentVotes: Record<string, VoteValue>;
+  isCreator?: boolean;
 }
 
 export interface WebSocketMessage {

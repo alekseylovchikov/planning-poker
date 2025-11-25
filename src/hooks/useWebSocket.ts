@@ -25,6 +25,7 @@ export const useWebSocket = (url: string) => {
             participants: [...(state.participants || [])],
             votesRevealed: state.votesRevealed || false,
             currentVotes: { ...(state.currentVotes || {}) },
+            isCreator: state.isCreator || false,
           });
           setError(null);
         }

@@ -270,6 +270,7 @@ function App() {
               votesRevealed={gameState.votesRevealed}
               onReset={reset}
               onReveal={reveal}
+              isCreator={gameState.isCreator || false}
             />
           </div>
         </div>

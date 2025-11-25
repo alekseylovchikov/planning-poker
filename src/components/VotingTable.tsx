@@ -9,6 +9,7 @@ interface VotingTableProps {
   votesRevealed: boolean;
   onReset: () => void;
   onReveal: () => void;
+  isCreator: boolean;
 }
 
 const voteToNumber = (vote: VoteValue | undefined): number | null => {
@@ -21,6 +22,7 @@ export const VotingTable = ({
   votesRevealed,
   onReset,
   onReveal,
+  isCreator,
 }: VotingTableProps) => {
   const votedParticipants = participants.filter((p) => p.hasVoted);
   const hasVotes = votedParticipants.length > 0;
@@ -81,23 +83,25 @@ export const VotingTable = ({
             </div>
           )}
 
-          <div className={styles.actions}>
-            <Button
-              onClick={onReset}
-              variant="outline"
-              className={styles.button}
-            >
-              Сбросить
-            </Button>
-            <Button
-              onClick={onReveal}
-              variant="outline"
-              disabled={!hasVotes || votesRevealed}
-              className={styles.button}
-            >
-              {votesRevealed ? "Карты открыты" : "Открыть карты"}
-            </Button>
-          </div>
+          {isCreator && (
+            <div className={styles.actions}>
+              <Button
+                onClick={onReset}
+                variant="outline"
+                className={styles.button}
+              >
+                Сбросить
+              </Button>
+              <Button
+                onClick={onReveal}
+                variant="outline"
+                disabled={!hasVotes || votesRevealed}
+                className={styles.button}
+              >
+                {votesRevealed ? "Карты открыты" : "Открыть карты"}
+              </Button>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

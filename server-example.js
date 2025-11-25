@@ -91,13 +91,14 @@ function generateId() {
 }
 
 // Создание новой комнаты
-function createRoom(roomId) {
+function createRoom(roomId, creatorId = null) {
   if (!rooms.has(roomId)) {
     rooms.set(roomId, {
       participants: [],
       votesRevealed: false,
       currentVotes: {},
-      roomId: roomId
+      roomId: roomId,
+      creatorId: creatorId
     });
   }
   return rooms.get(roomId);
@@ -111,6 +112,9 @@ function getSafeState(client, roomId) {
   try {
     // Клонируем состояние, чтобы не мутировать оригинал
     const clientState = JSON.parse(JSON.stringify(roomState));
+
+    // Добавляем флаг, является ли текущий пользователь создателем комнаты
+    clientState.isCreator = roomState.creatorId === client.userId;
 
     // Если карты не открыты, скрываем голоса других участников
     if (!clientState.votesRevealed) {
@@ -128,6 +132,9 @@ function getSafeState(client, roomId) {
         clientState.currentVotes[client.userId] = userVote;
       }
     }
+
+    // Удаляем creatorId из отправляемого состояния (не нужен на клиенте)
+    delete clientState.creatorId;
 
     return clientState;
   } catch (error) {
@@ -274,6 +281,12 @@ wss.on("connection", (ws) => {
 
             ws.userId = participant.id;
             gameState.participants.push(participant);
+
+            // Если это первый участник в комнате, делаем его создателем
+            if (!gameState.creatorId) {
+              gameState.creatorId = participant.id;
+              console.log(`Пользователь ${trimmedName} стал создателем комнаты ${roomId}`);
+            }
           }
 
           // Отправляем состояние новому участнику
@@ -318,9 +331,20 @@ wss.on("connection", (ws) => {
         }
 
         case "reset": {
-          if (!ws.roomId) return;
+          if (!ws.roomId || !ws.userId) return;
           const gameState = rooms.get(ws.roomId);
           if (!gameState) return;
+
+          // Только создатель комнаты может сбрасывать голоса
+          if (gameState.creatorId !== ws.userId) {
+            ws.send(
+              JSON.stringify({
+                type: "error",
+                payload: { message: "Только создатель комнаты может сбрасывать голоса" },
+              })
+            );
+            return;
+          }
 
           gameState.participants.forEach((participant) => {
             participant.vote = undefined;
@@ -333,9 +357,20 @@ wss.on("connection", (ws) => {
         }
 
         case "reveal": {
-          if (!ws.roomId) return;
+          if (!ws.roomId || !ws.userId) return;
           const gameState = rooms.get(ws.roomId);
           if (!gameState) return;
+
+          // Только создатель комнаты может открывать карты
+          if (gameState.creatorId !== ws.userId) {
+            ws.send(
+              JSON.stringify({
+                type: "error",
+                payload: { message: "Только создатель комнаты может открывать карты" },
+              })
+            );
+            return;
+          }
 
           gameState.votesRevealed = true;
           broadcastState(ws.roomId);
