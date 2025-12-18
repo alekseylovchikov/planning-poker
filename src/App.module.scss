@@ -8,7 +8,7 @@
 .header {
   background: #121212;
   border-bottom: 1px solid #1f1f1f;
-  padding: 1rem 2rem;
+  padding: 0.5rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -64,7 +64,7 @@
   display: grid;
   grid-template-columns: 300px 1fr;
   gap: 2rem;
-  padding: 2rem;
+  padding: 1rem 2rem;
   max-width: 1600px;
   margin: 0 auto;
   width: 100%;
