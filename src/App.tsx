@@ -8,6 +8,7 @@ import { useWebSocket } from "./hooks/useWebSocket";
 import { sanitizeName } from "./lib/utils";
 import type { VoteValue } from "./types";
 import styles from "./App.module.scss";
+import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
 
 // WebSocket URL - автоматически определяет протокол (ws/wss) на основе текущего протокола страницы
 const getWebSocketUrl = () => {
@@ -254,15 +255,22 @@ function App() {
         </div>
 
         <div className={styles.main}>
-          <div className={styles.votingSection}>
-            <VotingCards
-              selectedVote={selectedVote}
-              onSelectVote={setSelectedVote}
-              onVote={handleVote}
-              hasVoted={currentParticipant?.hasVoted || false}
-              votesRevealed={gameState.votesRevealed}
-            />
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Оценки</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={styles.votingSection}>
+                <VotingCards
+                  selectedVote={selectedVote}
+                  onSelectVote={setSelectedVote}
+                  onVote={handleVote}
+                  hasVoted={currentParticipant?.hasVoted || false}
+                  votesRevealed={gameState.votesRevealed}
+                />
+              </div>
+            </CardContent>
+          </Card>
 
           <div className={styles.tableSection}>
             <VotingTable

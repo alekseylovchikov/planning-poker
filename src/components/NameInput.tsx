@@ -20,7 +20,7 @@ export const NameInput = ({ onSubmit, error, isLoading }: NameInputProps) => {
     // Санитизируем ввод в реальном времени
     const sanitized = sanitizeName(inputValue);
     setName(sanitized);
-    
+
     // Очищаем ошибку валидации при изменении
     if (validationError) {
       setValidationError(null);
@@ -30,19 +30,19 @@ export const NameInput = ({ onSubmit, error, isLoading }: NameInputProps) => {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const trimmed = name.trim();
-    
+
     if (!trimmed) {
       setValidationError("Имя не может быть пустым");
       return;
     }
-    
+
     // Валидируем имя
     const validation = validateName(trimmed);
     if (!validation.isValid) {
       setValidationError(validation.errorMessage || "Некорректное имя");
       return;
     }
-    
+
     // Отправляем санитизированное имя
     const sanitized = sanitizeName(trimmed);
     onSubmit(sanitized);
@@ -62,7 +62,7 @@ export const NameInput = ({ onSubmit, error, isLoading }: NameInputProps) => {
                 type="text"
                 placeholder="Введите ваше имя"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={handleChange}
                 disabled={isLoading}
                 className={styles.input}
                 autoFocus
