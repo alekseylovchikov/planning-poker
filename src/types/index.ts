@@ -6,6 +6,7 @@ export interface Participant {
   isOnline: boolean;
   vote?: VoteValue;
   hasVoted: boolean;
+  canControlVotes?: boolean;
 }
 
 export interface GameState {
@@ -14,6 +15,7 @@ export interface GameState {
   votesRevealed: boolean;
   currentVotes: Record<string, VoteValue>;
   isCreator?: boolean;
+   canControlVotes?: boolean;
 }
 
 export interface WebSocketMessage {
@@ -25,6 +27,7 @@ export interface WebSocketMessage {
     | "reveal"
     | "state"
     | "name_taken"
+    | "set_controller"
     | "error";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payload?: any;

@@ -26,6 +26,7 @@ export const useWebSocket = (url: string) => {
             votesRevealed: state.votesRevealed || false,
             currentVotes: { ...(state.currentVotes || {}) },
             isCreator: state.isCreator || false,
+            canControlVotes: state.canControlVotes || false,
           });
           setError(null);
         }
@@ -115,6 +116,16 @@ export const useWebSocket = (url: string) => {
     sendMessage({ type: "reveal" });
   }, [sendMessage]);
 
+  const setParticipantCanControl = useCallback(
+    (participantId: string, canControl: boolean) => {
+      sendMessage({
+        type: "set_controller",
+        payload: { participantId, canControl },
+      });
+    },
+    [sendMessage]
+  );
+
   useEffect(() => {
     // Отложенный вызов для избежания синхронного setState в эффекте
     const timeoutId = setTimeout(() => {
@@ -145,5 +156,6 @@ export const useWebSocket = (url: string) => {
     reset,
     reveal,
     setOnNameTaken,
+    setParticipantCanControl,
   };
 };

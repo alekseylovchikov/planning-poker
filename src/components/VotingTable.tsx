@@ -9,7 +9,7 @@ interface VotingTableProps {
   votesRevealed: boolean;
   onReset: () => void;
   onReveal: () => void;
-  isCreator: boolean;
+  canControlVotes: boolean;
 }
 
 const voteToNumber = (vote: VoteValue | undefined): number | null => {
@@ -22,7 +22,7 @@ export const VotingTable = ({
   votesRevealed,
   onReset,
   onReveal,
-  isCreator,
+  canControlVotes,
 }: VotingTableProps) => {
   const votedParticipants = participants.filter((p) => p.hasVoted);
   const hasVotes = votedParticipants.length > 0;
@@ -82,7 +82,7 @@ export const VotingTable = ({
             </div>
           )}
 
-          {isCreator && (
+          {canControlVotes && (
             <div className={styles.actions}>
               <Button
                 onClick={onReset}

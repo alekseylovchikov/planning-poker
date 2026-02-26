@@ -69,6 +69,7 @@ function App() {
     reset,
     reveal,
     setOnNameTaken,
+    setParticipantCanControl,
   } = useWebSocket(WS_URL);
 
   // Обновляем URL когда получаем roomId от сервера
@@ -251,6 +252,8 @@ function App() {
           <ParticipantsList
             participants={gameState.participants}
             currentUserName={userName}
+            isCreator={gameState.isCreator || false}
+            onToggleController={setParticipantCanControl}
           />
         </div>
 
@@ -278,7 +281,7 @@ function App() {
               votesRevealed={gameState.votesRevealed}
               onReset={reset}
               onReveal={reveal}
-              isCreator={gameState.isCreator || false}
+              canControlVotes={gameState.canControlVotes || false}
             />
           </div>
         </div>

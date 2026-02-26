@@ -98,7 +98,8 @@ function createRoom(roomId, creatorId = null) {
       votesRevealed: false,
       currentVotes: {},
       roomId: roomId,
-      creatorId: creatorId
+      creatorId: creatorId,
+      controllers: [],
     });
   }
   return rooms.get(roomId);
@@ -113,8 +114,20 @@ function getSafeState(client, roomId) {
     // Клонируем состояние, чтобы не мутировать оригинал
     const clientState = JSON.parse(JSON.stringify(roomState));
 
-    // Добавляем флаг, является ли текущий пользователь создателем комнаты
-    clientState.isCreator = roomState.creatorId === client.userId;
+    // Добавляем флаги прав для текущего пользователя и участников
+    const isCreator = roomState.creatorId === client.userId;
+    const controllers = Array.isArray(roomState.controllers)
+      ? roomState.controllers
+      : [];
+
+    clientState.isCreator = isCreator;
+    clientState.canControlVotes =
+      isCreator || controllers.includes(client.userId);
+
+    clientState.participants.forEach((p) => {
+      p.canControlVotes =
+        p.id === roomState.creatorId || controllers.includes(p.id);
+    });
 
     // Если карты не открыты, скрываем голоса других участников
     if (!clientState.votesRevealed) {
@@ -135,6 +148,7 @@ function getSafeState(client, roomId) {
 
     // Удаляем creatorId из отправляемого состояния (не нужен на клиенте)
     delete clientState.creatorId;
+    delete clientState.controllers;
 
     return clientState;
   } catch (error) {
@@ -335,8 +349,15 @@ wss.on("connection", (ws) => {
           const gameState = rooms.get(ws.roomId);
           if (!gameState) return;
 
-          // Только создатель комнаты может сбрасывать голоса
-          if (gameState.creatorId !== ws.userId) {
+          // Только создатель комнаты и отмеченные пользователи могут сбрасывать голоса
+          const controllers = Array.isArray(gameState.controllers)
+            ? gameState.controllers
+            : [];
+          const canControl =
+            gameState.creatorId === ws.userId ||
+            controllers.includes(ws.userId);
+
+          if (!canControl) {
             ws.send(
               JSON.stringify({
                 type: "error",
@@ -361,8 +382,15 @@ wss.on("connection", (ws) => {
           const gameState = rooms.get(ws.roomId);
           if (!gameState) return;
 
-          // Только создатель комнаты может открывать карты
-          if (gameState.creatorId !== ws.userId) {
+          // Только создатель комнаты и отмеченные пользователи могут открывать карты
+          const controllers = Array.isArray(gameState.controllers)
+            ? gameState.controllers
+            : [];
+          const canControl =
+            gameState.creatorId === ws.userId ||
+            controllers.includes(ws.userId);
+
+          if (!canControl) {
             ws.send(
               JSON.stringify({
                 type: "error",
@@ -373,6 +401,50 @@ wss.on("connection", (ws) => {
           }
 
           gameState.votesRevealed = true;
+          broadcastState(ws.roomId);
+          break;
+        }
+
+        case "set_controller": {
+          if (!ws.roomId || !ws.userId) return;
+          const gameState = rooms.get(ws.roomId);
+          if (!gameState) return;
+
+          // Только создатель комнаты может управлять правами
+          if (gameState.creatorId !== ws.userId) {
+            ws.send(
+              JSON.stringify({
+                type: "error",
+                payload: {
+                  message:
+                    "Только создатель комнаты может изменять права на открытие и сброс карт",
+                },
+              })
+            );
+            return;
+          }
+
+          const { participantId, canControl } = message.payload || {};
+          if (!participantId) return;
+
+          const participantExists = gameState.participants.some(
+            (p) => p.id === participantId
+          );
+          if (!participantExists) return;
+
+          if (!Array.isArray(gameState.controllers)) {
+            gameState.controllers = [];
+          }
+
+          const index = gameState.controllers.indexOf(participantId);
+          if (canControl) {
+            if (index === -1) {
+              gameState.controllers.push(participantId);
+            }
+          } else if (index !== -1) {
+            gameState.controllers.splice(index, 1);
+          }
+
           broadcastState(ws.roomId);
           break;
         }

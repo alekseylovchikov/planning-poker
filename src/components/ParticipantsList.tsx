@@ -6,11 +6,15 @@ import styles from "./ParticipantsList.module.scss";
 interface ParticipantsListProps {
   participants: Participant[];
   currentUserName?: string;
+  isCreator?: boolean;
+  onToggleController?: (participantId: string, canControl: boolean) => void;
 }
 
 export const ParticipantsList = ({
   participants,
   currentUserName,
+  isCreator,
+  onToggleController,
 }: ParticipantsListProps) => {
   return (
     <Card className={styles.card}>
@@ -28,6 +32,8 @@ export const ParticipantsList = ({
               const displayName = truncateName(sanitizedName, 30);
               const isCurrentUser =
                 sanitizeName(currentUserName || "") === sanitizedName;
+              const isController = !!participant.canControlVotes;
+              const canEditControllers = !!(isCreator && onToggleController);
 
               return (
                 <div
@@ -42,6 +48,9 @@ export const ParticipantsList = ({
                   <div className={styles.info}>
                     <span className={styles.name}>{displayName}</span>
                     {isCurrentUser && <span className={styles.you}>(Вы)</span>}
+                    {isController && (
+                      <span className={styles.controllerBadge}>Модератор</span>
+                    )}
                   </div>
                   <div className={styles.status}>
                     <span
@@ -52,6 +61,20 @@ export const ParticipantsList = ({
                     <span className={styles.statusText}>
                       {participant.isOnline ? "Онлайн" : "Офлайн"}
                     </span>
+                    {canEditControllers && !isCurrentUser && (
+                      <button
+                        type="button"
+                        className={styles.controllerToggleButton}
+                        onClick={() =>
+                          onToggleController(
+                            participant.id,
+                            !isController
+                          )
+                        }
+                      >
+                        {isController ? "Убрать права" : "Дать права"}
+                      </button>
+                    )}
                   </div>
                 </div>
               );
