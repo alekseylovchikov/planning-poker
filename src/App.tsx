@@ -210,6 +210,44 @@ function App() {
     }
   }, [gameState.votesRevealed, gameState.participants]);
 
+  // Запрос разрешения на уведомления при входе в комнату
+  const hasRequestedNotificationRef = useRef(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (!gameState.roomId || hasRequestedNotificationRef.current) return;
+    hasRequestedNotificationRef.current = true;
+    if (Notification.permission === "default") {
+      void Notification.requestPermission();
+    }
+  }, [gameState.roomId]);
+
+  // Браузерное уведомление при открытии карт
+  const prevVotesRevealedRef = useRef(gameState.votesRevealed);
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    const prev = prevVotesRevealedRef.current;
+    const current = gameState.votesRevealed;
+    prevVotesRevealedRef.current = current;
+    if (!prev && !current) return;
+
+    if (!prev && current) {
+      const show = () => {
+        const n = new Notification("Planning Poker", { body: "Карты открыты!" });
+        n.onclick = () => {
+          window.focus();
+          n.close();
+        };
+      };
+      if (Notification.permission === "granted") {
+        show();
+      } else if (Notification.permission === "default") {
+        Notification.requestPermission().then((p) => {
+          if (p === "granted") show();
+        });
+      }
+    }
+  }, [gameState.votesRevealed]);
+
   // Если пользователь не ввел имя, показываем форму ввода
   if (!userName) {
     return (
