@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { GameState, VoteValue, WebSocketMessage } from "../types";
 
+const RECONNECT_DELAY_MS = 3000;
+/** Минимальное время скрытия вкладки (мс), после которого при показе делаем переподключение */
+const VISIBILITY_RECONNECT_THRESHOLD_MS = 15000;
+
 export const useWebSocket = (url: string) => {
   const [isConnected, setIsConnected] = useState(false);
   const [gameState, setGameState] = useState<GameState>({
@@ -11,6 +15,8 @@ export const useWebSocket = (url: string) => {
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
+  const reconnectOnVisibleRef = useRef(false);
+  const hiddenSinceRef = useRef<number | null>(null);
   const onNameTakenRef = useRef<(() => void) | null>(null);
   const connectRef = useRef<(() => void) | null>(null);
 
@@ -70,12 +76,14 @@ export const useWebSocket = (url: string) => {
       ws.onclose = () => {
         setIsConnected(false);
         console.log("WebSocket disconnected");
-        // Attempt to reconnect after 3 seconds
-        reconnectTimeoutRef.current = setTimeout(() => {
-          if (connectRef.current) {
-            connectRef.current();
-          }
-        }, 3000);
+        if (reconnectOnVisibleRef.current) {
+          reconnectOnVisibleRef.current = false;
+          if (connectRef.current) connectRef.current();
+        } else {
+          reconnectTimeoutRef.current = window.setTimeout(() => {
+            if (connectRef.current) connectRef.current();
+          }, RECONNECT_DELAY_MS);
+        }
       };
     } catch (err) {
       setError("Failed to connect");
@@ -127,7 +135,6 @@ export const useWebSocket = (url: string) => {
   );
 
   useEffect(() => {
-    // Отложенный вызов для избежания синхронного setState в эффекте
     const timeoutId = setTimeout(() => {
       connect();
     }, 0);
@@ -136,12 +143,37 @@ export const useWebSocket = (url: string) => {
       clearTimeout(timeoutId);
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
       if (wsRef.current) {
         wsRef.current.close();
       }
     };
   }, [connect]);
+
+  // При уходе на другую вкладку запоминаем время; при возврате после долгого отсутствия переподключаемся
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenSinceRef.current = Date.now();
+        return;
+      }
+      const hiddenSince = hiddenSinceRef.current;
+      hiddenSinceRef.current = null;
+      const ws = wsRef.current;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      const hiddenDuration = hiddenSince != null ? Date.now() - hiddenSince : 0;
+      if (hiddenDuration < VISIBILITY_RECONNECT_THRESHOLD_MS) return;
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      reconnectOnVisibleRef.current = true;
+      ws.close();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
 
   const setOnNameTaken = useCallback((callback: () => void) => {
     onNameTakenRef.current = callback;
