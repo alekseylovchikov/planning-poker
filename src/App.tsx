@@ -255,6 +255,24 @@ function App() {
     }
 
     if (!prev && current) {
+      // Звук при открытии карт в зависимости от совпадения оценок
+      const validVotes = gameState.participants
+        .filter((p) => p.hasVoted && p.vote)
+        .map((p) => p.vote);
+
+      if (validVotes.length > 0) {
+        const firstVote = validVotes[0];
+        const allEqual = validVotes.every((v) => v === firstVote);
+        const soundPath = allEqual
+          ? "/sounds/success.mp3"
+          : "/sounds/error.mp3";
+
+        const audio = new Audio(soundPath);
+        void audio.play().catch(() => {
+          // Игнорируем ошибки воспроизведения (например, ограничения автоплея)
+        });
+      }
+
       // Если вкладка не активна или браузерные уведомления недоступны/запрещены,
       // мигаем заголовком вкладки, чтобы привлечь внимание
       if (typeof document !== "undefined") {
