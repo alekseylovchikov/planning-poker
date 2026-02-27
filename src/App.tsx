@@ -47,7 +47,7 @@ function App() {
   // Санитизируем имя при загрузке из localStorage
   const storedName = localStorage.getItem("userName");
   const [userName, setUserName] = useState<string | null>(
-    storedName ? sanitizeName(storedName) : null
+    storedName ? sanitizeName(storedName) : null,
   );
   const [roomId, setRoomId] = useState<string | null>(() => {
     if (typeof window !== "undefined") {
@@ -75,8 +75,13 @@ function App() {
   // Обновляем URL когда получаем roomId от сервера
   useEffect(() => {
     if (gameState.roomId && gameState.roomId !== roomId) {
-      setRoomId(gameState.roomId);
+      const newRoomId = gameState.roomId ?? null;
+      setTimeout(() => {
+        setRoomId(newRoomId);
+      }, 0);
+
       const params = new URLSearchParams(window.location.search);
+
       params.set("room", gameState.roomId);
       window.history.pushState({}, "", `?${params.toString()}`);
     }
@@ -133,7 +138,7 @@ function App() {
   // Сравниваем санитизированные имена для поиска текущего участника
   const sanitizedUserName = userName ? sanitizeName(userName) : null;
   const currentParticipant = gameState.participants.find(
-    (p) => sanitizeName(p.name) === sanitizedUserName
+    (p) => sanitizeName(p.name) === sanitizedUserName,
   );
 
   // Сбрасываем выбранный голос только когда голосование действительно сброшено на сервере
@@ -143,7 +148,9 @@ function App() {
     const currentHasVoted = currentParticipant?.hasVoted ?? false;
     // Если hasVoted изменился с true на false - произошел reset, сбрасываем выбранную карту
     if (prevHasVotedRef.current === true && currentHasVoted === false) {
-      setSelectedVote(null);
+      setTimeout(() => {
+        setSelectedVote(null);
+      }, 0);
     }
     prevHasVotedRef.current = currentHasVoted;
   }, [currentParticipant?.hasVoted]);
@@ -184,7 +191,7 @@ function App() {
             return Math.random() * (max - min) + min;
           };
 
-          const interval: any = setInterval(function () {
+          const interval = window.setInterval(function () {
             const timeLeft = animationEnd - Date.now();
 
             if (timeLeft <= 0) {
@@ -223,16 +230,64 @@ function App() {
 
   // Браузерное уведомление при открытии карт
   const prevVotesRevealedRef = useRef(gameState.votesRevealed);
+  const originalTitleRef = useRef<string | null>(null);
+  const titleIntervalRef = useRef<number | null>(null);
+
+  const clearTitleAttention = () => {
+    if (titleIntervalRef.current !== null) {
+      window.clearInterval(titleIntervalRef.current);
+      titleIntervalRef.current = null;
+    }
+    if (originalTitleRef.current !== null) {
+      document.title = originalTitleRef.current;
+      originalTitleRef.current = null;
+    }
+  };
+
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
     const prev = prevVotesRevealedRef.current;
     const current = gameState.votesRevealed;
     prevVotesRevealedRef.current = current;
-    if (!prev && !current) return;
+    if (!prev && !current) {
+      clearTitleAttention();
+      return;
+    }
 
     if (!prev && current) {
+      // Если вкладка не активна или браузерные уведомления недоступны/запрещены,
+      // мигаем заголовком вкладки, чтобы привлечь внимание
+      if (typeof document !== "undefined") {
+        if (originalTitleRef.current === null) {
+          originalTitleRef.current = document.title;
+        }
+        clearTitleAttention();
+        const attentionTitle = "Карты открыты! – Planning Poker";
+        let isAttentionTitle = false;
+        titleIntervalRef.current = window.setInterval(() => {
+          document.title = isAttentionTitle
+            ? originalTitleRef.current || "Planning Poker"
+            : attentionTitle;
+          isAttentionTitle = !isAttentionTitle;
+        }, 1000);
+
+        const handleVisibilityChange = () => {
+          if (!document.hidden) {
+            clearTitleAttention();
+            document.removeEventListener(
+              "visibilitychange",
+              handleVisibilityChange,
+            );
+          }
+        };
+
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+      }
+
       const show = () => {
-        const n = new Notification("Planning Poker", { body: "Карты открыты!" });
+        const n = new Notification("Planning Poker", {
+          body: "Карты открыты!",
+        });
         n.onclick = () => {
           window.focus();
           n.close();
