@@ -255,9 +255,7 @@ function App() {
       return;
     }
 
-    const votedCount = gameState.participants.filter(
-      (p) => p.hasVoted && p.vote,
-    ).length;
+    const votedCount = gameState.participants.filter((p) => p.hasVoted).length;
 
     document.title =
       votedCount > 0 ? `${votedCount} – Planning Poker` : "Planning Poker";
