@@ -299,13 +299,11 @@ function App() {
           originalTitleRef.current = document.title;
         }
         clearTitleAttention();
-        const attentionTitle = "Карты открыты! – Planning Poker";
-        let isAttentionTitle = false;
+        // const attentionTitle = "Карты открыты! – Planning Poker";
+        // let isAttentionTitle = false;
         titleIntervalRef.current = window.setInterval(() => {
-          document.title = isAttentionTitle
-            ? originalTitleRef.current || "Planning Poker"
-            : attentionTitle;
-          isAttentionTitle = !isAttentionTitle;
+          document.title = originalTitleRef.current || "Planning Poker";
+          // isAttentionTitle = !isAttentionTitle;
         }, 1000);
 
         const handleVisibilityChange = () => {
