@@ -238,11 +238,30 @@ function App() {
       window.clearInterval(titleIntervalRef.current);
       titleIntervalRef.current = null;
     }
-    if (originalTitleRef.current !== null) {
-      document.title = originalTitleRef.current;
-      originalTitleRef.current = null;
+    if (typeof document !== "undefined") {
+      if (originalTitleRef.current !== null) {
+        document.title = originalTitleRef.current;
+        originalTitleRef.current = null;
+      }
     }
   };
+
+  // Отображение количества проголосовавших в заголовке вкладки во время голосования
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    if (gameState.votesRevealed) {
+      // Во время показа карт управляем заголовком в другом эффекте
+      return;
+    }
+
+    const votedCount = gameState.participants.filter(
+      (p) => p.hasVoted && p.vote,
+    ).length;
+
+    document.title =
+      votedCount > 0 ? `${votedCount} – Planning Poker` : "Planning Poker";
+  }, [gameState.participants, gameState.votesRevealed]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
@@ -319,7 +338,7 @@ function App() {
         });
       }
     }
-  }, [gameState.votesRevealed]);
+  }, [gameState.votesRevealed, gameState.participants]);
 
   // Если пользователь не ввел имя, показываем форму ввода
   if (!userName) {
