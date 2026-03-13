@@ -151,7 +151,7 @@ export const useWebSocket = (url: string) => {
     };
   }, [connect]);
 
-  // При уходе на другую вкладку запоминаем время; при возврате после долгого отсутствия переподключаемся
+  // При уходе на другую вкладку запоминаем время; при возврате переподключаемся если нужно
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === "hidden") {
@@ -161,7 +161,19 @@ export const useWebSocket = (url: string) => {
       const hiddenSince = hiddenSinceRef.current;
       hiddenSinceRef.current = null;
       const ws = wsRef.current;
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+      // Если WS уже отключён пока вкладка была скрыта (браузер throttle-ит таймеры),
+      // отменяем throttled таймаут и переподключаемся немедленно
+      if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
+        }
+        if (connectRef.current) connectRef.current();
+        return;
+      }
+
+      if (ws.readyState !== WebSocket.OPEN) return;
       const hiddenDuration = hiddenSince != null ? Date.now() - hiddenSince : 0;
       if (hiddenDuration < VISIBILITY_RECONNECT_THRESHOLD_MS) return;
       if (reconnectTimeoutRef.current) {
