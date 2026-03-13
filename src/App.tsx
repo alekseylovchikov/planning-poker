@@ -363,7 +363,7 @@ function App() {
                 navigator.clipboard.writeText(window.location.href);
                 alert("Ссылка скопирована!");
               }}
-              style={{ cursor: "pointer", marginRight: "10px" }}
+              // style={{ cursor: "pointer", marginRight: "10px" }}
             >
               Комната: {gameState.roomId} (нажми чтобы скопировать)
             </span>
