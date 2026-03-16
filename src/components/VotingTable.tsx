@@ -1,7 +1,7 @@
 import type { Participant, VoteValue } from "../types";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
-import { sanitizeName, truncateName } from "../lib/utils";
+import { truncateName, sanitizeName } from '../lib';
 import styles from "./VotingTable.module.scss";
 
 interface VotingTableProps {

@@ -1,6 +1,6 @@
 import type { Participant } from "../types";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { sanitizeName, truncateName } from "../lib/utils";
+import { sanitizeName, truncateName } from '../lib';
 import styles from "./ParticipantsList.module.scss";
 
 interface ParticipantsListProps {

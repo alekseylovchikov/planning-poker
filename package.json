@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "node server-example.js"
+    "start": "node server-example"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
@@ -17,6 +17,7 @@
     "lucide-react": "^0.553.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-toastify": "^11.0.5",
     "sass": "^1.94.0",
     "tailwind-merge": "^3.4.0",
     "ws": "^8.18.3"
