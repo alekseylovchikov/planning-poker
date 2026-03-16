@@ -58,6 +58,9 @@ function App() {
   });
   const [selectedVote, setSelectedVote] = useState<VoteValue | null>(null);
   const [isJoining, setIsJoining] = useState(false);
+  const [isMuted, setIsMuted] = useState(() => {
+    return localStorage.getItem("isMuted") === "true";
+  });
   const hasAttemptedJoinRef = useRef(false);
 
   const {
@@ -284,14 +287,16 @@ function App() {
       if (validVotes.length > 0) {
         const firstVote = validVotes[0];
         const allEqual = validVotes.every((v) => v === firstVote);
-        const soundPath = allEqual
-          ? "/sounds/success.mp3"
-          : "/sounds/error.mp3";
+        if (!isMuted) {
+          const soundPath = allEqual
+            ? "/sounds/wow.mp3"
+            : "/sounds/error.mp3";
 
-        const audio = new Audio(soundPath);
-        void audio.play().catch(() => {
-          // Игнорируем ошибки воспроизведения (например, ограничения автоплея)
-        });
+          const audio = new Audio(soundPath);
+          void audio.play().catch(() => {
+            // Игнорируем ошибки воспроизведения (например, ограничения автоплея)
+          });
+        }
       }
 
       // Если вкладка не активна или браузерные уведомления недоступны/запрещены,
@@ -338,7 +343,15 @@ function App() {
         });
       }
     }
-  }, [gameState.votesRevealed, gameState.participants]);
+  }, [gameState.votesRevealed, gameState.participants, isMuted]);
+
+  const handleMuteToggle = () => {
+    setIsMuted((prev) => {
+      const next = !prev;
+      localStorage.setItem("isMuted", String(next));
+      return next;
+    });
+  };
 
   // Если пользователь не ввел имя, показываем форму ввода
   if (!userName) {
@@ -368,6 +381,13 @@ function App() {
               Комната: {gameState.roomId} (нажми чтобы скопировать)
             </span>
           )}
+          <button
+            className={styles.muteButton}
+            onClick={handleMuteToggle}
+            title={isMuted ? "Включить звук" : "Выключить звук"}
+          >
+            {isMuted ? "🔇" : "🔊"}
+          </button>
           <span
             className={`${styles.statusIndicator} ${
               isConnected ? styles.connected : styles.disconnected
