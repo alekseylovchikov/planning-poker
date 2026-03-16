@@ -293,6 +293,7 @@ function App() {
             : "/sounds/error.mp3";
 
           const audio = new Audio(soundPath);
+          audio.volume = 0.6;
           void audio.play().catch(() => {
             // Игнорируем ошибки воспроизведения (например, ограничения автоплея)
           });
