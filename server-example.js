@@ -82,6 +82,23 @@ const server = http.createServer((req, res) => {
 // Создаем WebSocket сервер на том же HTTP сервере
 const wss = new WebSocketServer({ server });
 
+// Heartbeat: раз в 10 секунд пингуем все соединения.
+// Если клиент не ответил на предыдущий пинг — соединение "зомби",
+// принудительно закрываем его, чтобы освободить слот для переподключения.
+const HEARTBEAT_INTERVAL_MS = 10_000;
+const heartbeat = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws.isAlive === false) {
+      ws.terminate();
+      return;
+    }
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, HEARTBEAT_INTERVAL_MS);
+
+wss.on("close", () => clearInterval(heartbeat));
+
 // Хранилище состояния комнат: roomId -> GameState
 const rooms = new Map();
 
@@ -209,8 +226,10 @@ function updateOnlineStatus() {
 
 wss.on("connection", (ws) => {
   console.log("Новое подключение WebSocket");
-  ws.userId = null; // Инициализируем userId как null
+  ws.userId = null;
   ws.roomId = null;
+  ws.isAlive = true;
+  ws.on("pong", () => { ws.isAlive = true; });
 
   ws.on("message", (data) => {
     try {
