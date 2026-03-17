@@ -341,21 +341,23 @@ function App() {
               className={styles.roomId}
               onClick={() => {
                 navigator.clipboard.writeText(window.location.href);
-                toast.success("Ссылка скопирована!");
+                toast.success('Ссылка скопирована!');
               }}
             >
               Комната: {gameState.roomId} (скопировать)
             </span>
           )}
 
-          <SoundButton isMuted={isMuted} onClick={handleMuteToggle} />
+          <div className={styles.connectionStatusContainer}>
+            <SoundButton isMuted={isMuted} onClick={handleMuteToggle} />
 
-          <span
-            className={`${styles.statusIndicator} ${
-              isConnected ? styles.connected : styles.disconnected
-            }`}
-          />
-          <span>{isConnected ? "Подключено" : "Подключение..."}</span>
+            <span
+              className={`${styles.statusIndicator} ${
+                isConnected ? styles.connected : styles.disconnected
+              }`}
+            />
+            <span>{isConnected ? 'Подключено' : 'Подключение...'}</span>
+          </div>
         </div>
       </div>
 
