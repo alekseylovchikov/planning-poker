@@ -78,7 +78,13 @@ export const useWebSocket = (url: string) => {
         console.log("WebSocket disconnected");
         if (reconnectOnVisibleRef.current) {
           reconnectOnVisibleRef.current = false;
-          if (connectRef.current) connectRef.current();
+          // Небольшая задержка: сервер должен успеть обработать закрытие
+          // старого соединения до того, как новое пришлёт join.
+          // Без этого сервер ещё видит старое соединение как OPEN и
+          // отвечает name_taken, что стирает имя пользователя.
+          reconnectTimeoutRef.current = window.setTimeout(() => {
+            if (connectRef.current) connectRef.current();
+          }, 300);
         } else {
           reconnectTimeoutRef.current = window.setTimeout(() => {
             if (connectRef.current) connectRef.current();

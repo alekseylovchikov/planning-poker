@@ -254,35 +254,31 @@ wss.on("connection", (ws) => {
           );
 
           if (existingParticipant) {
-            // Проверяем, есть ли активное соединение с этим участником в ЭТОЙ комнате
-            let hasActiveConnection = false;
+            // Закрываем все старые соединения для этого участника в этой комнате
+            // и разрешаем переподключение (последнее соединение побеждает).
+            // Это решает гонку состояний: когда клиент переподключается после
+            // смены вкладки, сервер может ещё видеть старое соединение как OPEN,
+            // хотя оно уже закрывается. Вместо name_taken принудительно вытесняем
+            // старое соединение и принимаем новое.
+            let hadOtherConnection = false;
             wss.clients.forEach((client) => {
               if (client !== ws && client.userId === existingParticipant.id && client.roomId === roomId) {
-                if (client.readyState === WebSocket.OPEN) {
-                  hasActiveConnection = true;
+                hadOtherConnection = true;
+                try {
+                  client.close();
+                } catch (e) {
+                  console.error("Error closing old connection:", e);
                 }
               }
             });
 
-            if (hasActiveConnection) {
-              ws.send(JSON.stringify({ type: "name_taken" }));
-              return;
-            } else {
-              // Переподключение
-              wss.clients.forEach((client) => {
-                if (client !== ws && client.userId === existingParticipant.id && client.roomId === roomId) {
-                  try {
-                     client.close();
-                  } catch (e) {
-                     console.error("Error closing old connection:", e);
-                  }
-                }
-              });
-
-              existingParticipant.isOnline = true;
-              ws.userId = existingParticipant.id;
-              broadcastState(roomId);
+            if (hadOtherConnection) {
+              console.log(`Переподключение участника: ${trimmedName} в комнате ${roomId}`);
             }
+
+            existingParticipant.isOnline = true;
+            ws.userId = existingParticipant.id;
+            broadcastState(roomId);
           } else {
             // Создание нового участника
             const participant = {

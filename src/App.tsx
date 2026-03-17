@@ -344,7 +344,7 @@ function App() {
                 toast.success("Ссылка скопирована!");
               }}
             >
-              Комната: {gameState.roomId} (нажми чтобы скопировать)
+              Комната: {gameState.roomId} (скопировать)
             </span>
           )}
 
