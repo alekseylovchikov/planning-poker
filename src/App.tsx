@@ -1,30 +1,30 @@
-import { useState, useEffect, useRef } from "react";
-import confetti from "canvas-confetti";
-import { NameInput } from "./components/NameInput";
-import { ParticipantsList } from "./components/ParticipantsList";
-import { VotingCards } from "./components/VotingCards";
-import { VotingTable } from "./components/VotingTable";
-import { useWebSocket } from "./hooks/useWebSocket";
-import { sanitizeName, getWebSocketUrl } from "./lib";
-import type { VoteValue } from "./types";
-import styles from "./App.module.scss";
-import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
+import { useState, useEffect, useRef } from 'react';
+import confetti from 'canvas-confetti';
+import { NameInput } from './components/NameInput';
+import { ParticipantsList } from './components/ParticipantsList';
+import { VotingCards } from './components/VotingCards';
+import { VotingTable } from './components/VotingTable';
+import { useWebSocket } from './hooks/useWebSocket';
+import { sanitizeName, getWebSocketUrl } from './lib';
+import type { VoteValue } from './types';
+import styles from './App.module.scss';
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { ToastContainer, toast } from 'react-toastify';
-import { useAudio } from "./features/audio/usePlayAudio";
-import { SoundButton } from "./features/audio/SoundButton";
+import { useAudio } from './features/audio/usePlayAudio';
+import { MuteButton } from './features/audio/MuteButton';
 
 const WS_URL = getWebSocketUrl();
 
 function App() {
   // Санитизируем имя при загрузке из localStorage
-  const storedName = localStorage.getItem("userName");
+  const storedName = localStorage.getItem('userName');
   const [userName, setUserName] = useState<string | null>(
     storedName ? sanitizeName(storedName) : null,
   );
   const [roomId, setRoomId] = useState<string | null>(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      return params.get("room");
+      return params.get('room');
     }
     return null;
   });
@@ -58,15 +58,15 @@ function App() {
 
       const params = new URLSearchParams(window.location.search);
 
-      params.set("room", gameState.roomId);
-      window.history.pushState({}, "", `?${params.toString()}`);
+      params.set('room', gameState.roomId);
+      window.history.pushState({}, '', `?${params.toString()}`);
     }
   }, [gameState.roomId, roomId]);
 
   useEffect(() => {
     setOnNameTaken(() => {
       setUserName(null);
-      localStorage.removeItem("userName");
+      localStorage.removeItem('userName');
       setIsJoining(false);
       hasAttemptedJoinRef.current = false;
     });
@@ -97,7 +97,7 @@ function App() {
     // Имя уже санитизировано в NameInput, но санитизируем еще раз для безопасности
     const sanitizedName = sanitizeName(name);
     setUserName(sanitizedName);
-    localStorage.setItem("userName", sanitizedName);
+    localStorage.setItem('userName', sanitizedName);
     setIsJoining(true);
     if (isConnected) {
       join(sanitizedName, roomId || undefined);
@@ -198,10 +198,10 @@ function App() {
   // Запрос разрешения на уведомления при входе в комнату
   const hasRequestedNotificationRef = useRef(false);
   useEffect(() => {
-    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
     if (!gameState.roomId || hasRequestedNotificationRef.current) return;
     hasRequestedNotificationRef.current = true;
-    if (Notification.permission === "default") {
+    if (Notification.permission === 'default') {
       void Notification.requestPermission();
     }
   }, [gameState.roomId]);
@@ -216,7 +216,7 @@ function App() {
       window.clearInterval(titleIntervalRef.current);
       titleIntervalRef.current = null;
     }
-    if (typeof document !== "undefined") {
+    if (typeof document !== 'undefined') {
       if (originalTitleRef.current !== null) {
         document.title = originalTitleRef.current;
         originalTitleRef.current = null;
@@ -226,7 +226,7 @@ function App() {
 
   // Отображение количества проголосовавших в заголовке вкладки во время голосования
   useEffect(() => {
-    if (typeof document === "undefined") return;
+    if (typeof document === 'undefined') return;
 
     if (gameState.votesRevealed) {
       // Во время показа карт управляем заголовком в другом эффекте
@@ -238,7 +238,7 @@ function App() {
     ).length;
 
     document.title =
-      votedCount > 0 ? `${votedCount} – Planning Poker` : "Planning Poker";
+      votedCount > 0 ? `${votedCount} – Planning Poker` : 'Planning Poker';
   }, [gameState.participants, gameState.votesRevealed]);
 
   const handleMuteToggle = () => {
@@ -250,7 +250,7 @@ function App() {
   };
 
   useEffect(() => {
-    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
     const prev = prevVotesRevealedRef.current;
     const current = gameState.votesRevealed;
     prevVotesRevealedRef.current = current;
@@ -276,7 +276,7 @@ function App() {
 
       // Если вкладка не активна или браузерные уведомления недоступны/запрещены,
       // мигаем заголовком вкладки, чтобы привлечь внимание
-      if (typeof document !== "undefined") {
+      if (typeof document !== 'undefined') {
         if (originalTitleRef.current === null) {
           originalTitleRef.current = document.title;
         }
@@ -284,7 +284,7 @@ function App() {
         // const attentionTitle = "Карты открыты! – Planning Poker";
         // let isAttentionTitle = false;
         titleIntervalRef.current = window.setInterval(() => {
-          document.title = originalTitleRef.current || "Planning Poker";
+          document.title = originalTitleRef.current || 'Planning Poker';
           // isAttentionTitle = !isAttentionTitle;
         }, 1000);
 
@@ -292,29 +292,29 @@ function App() {
           if (!document.hidden) {
             clearTitleAttention();
             document.removeEventListener(
-              "visibilitychange",
+              'visibilitychange',
               handleVisibilityChange,
             );
           }
         };
 
-        document.addEventListener("visibilitychange", handleVisibilityChange);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
       }
 
       const show = () => {
-        const n = new Notification("Planning Poker", {
-          body: "Карты открыты!",
+        const n = new Notification('Planning Poker', {
+          body: 'Карты открыты!',
         });
         n.onclick = () => {
           window.focus();
           n.close();
         };
       };
-      if (Notification.permission === "granted") {
+      if (Notification.permission === 'granted') {
         show();
-      } else if (Notification.permission === "default") {
+      } else if (Notification.permission === 'default') {
         Notification.requestPermission().then((p) => {
-          if (p === "granted") show();
+          if (p === 'granted') show();
         });
       }
     }
@@ -336,6 +336,9 @@ function App() {
       <div className={styles.header}>
         <h1 className={styles.title}>Planning Poker</h1>
         <div className={styles.connectionStatus}>
+          <a type="button" href={window.location.origin}>
+            Создать новую комнату
+          </a>
           {gameState.roomId && (
             <span
               className={styles.roomId}
@@ -349,7 +352,7 @@ function App() {
           )}
 
           <div className={styles.connectionStatusContainer}>
-            <SoundButton isMuted={isMuted} onClick={handleMuteToggle} />
+            <MuteButton isMuted={isMuted} onClick={handleMuteToggle} />
 
             <span
               className={`${styles.statusIndicator} ${

@@ -1,11 +1,11 @@
-import styles from './SoundButton.module.scss';
+import styles from './MuteButton.module.scss';
 
-type SoundButtonProps = {
-    isMuted: boolean;
-    onClick: () => void;
-}
+type MuteButtonProps = {
+  isMuted: boolean;
+  onClick: () => void;
+};
 
-export function SoundButton({ isMuted, onClick }: SoundButtonProps) {
+export function MuteButton({ isMuted, onClick }: MuteButtonProps) {
   return (
     <button
       className={styles.muteButton}
