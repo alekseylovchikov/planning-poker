@@ -1,132 +1,18 @@
-import 'dotenv/config';
-import { WebSocketServer, WebSocket } from 'ws';
-import http from 'http';
-import { readFileSync, existsSync, statSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { MongoClient } from 'mongodb';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { createdServer as server } from './backend/createdServer.js';
+import { createRoom } from './backend/createRoom.js';
+import { getSafeState } from './backend/getSafeState.js';
+import { wss } from './backend/wss.js';
+import { updateOnlineStatus } from './backend/updateOnlineStatus.js';
+import { rooms } from './backend/rooms.js';
+import { broadcastState } from './backend/broadcastState.js';
+import { generateId } from './backend/generateId.js';
+import {
+  saveRoomCreator,
+  getRoomCreatorName,
+} from './backend/roomCreatorsDb.js';
+import { getDb } from './backend/db.js';
 
 const PORT = process.env.PORT || 8080;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
-const DB_NAME = 'planning_poker';
-
-// --- MongoDB ---
-
-let roomsCol = null;
-
-async function connectMongo() {
-  try {
-    const client = new MongoClient(MONGODB_URI);
-    await client.connect();
-    const mongoDb = client.db(DB_NAME);
-    roomsCol = mongoDb.collection('rooms');
-    await roomsCol.createIndex({ roomId: 1 }, { unique: true });
-    console.log('MongoDB подключен');
-  } catch (err) {
-    console.error('MongoDB не подключен, продолжаем без персистентности:', err.message);
-  }
-}
-
-async function dbGetRoom(roomId) {
-  if (!roomsCol) return null;
-  try {
-    return await roomsCol.findOne({ roomId });
-  } catch (err) {
-    console.error('dbGetRoom error:', err.message);
-    return null;
-  }
-}
-
-async function dbSaveRoom(roomId, creatorName, controllerNames = []) {
-  if (!roomsCol) return;
-  try {
-    await roomsCol.updateOne(
-      { roomId },
-      { $set: { creatorName, controllerNames } },
-      { upsert: true },
-    );
-  } catch (err) {
-    console.error('dbSaveRoom error:', err.message);
-  }
-}
-
-async function dbUpdateControllers(roomId, controllerNames) {
-  if (!roomsCol) return;
-  try {
-    await roomsCol.updateOne({ roomId }, { $set: { controllerNames } });
-  } catch (err) {
-    console.error('dbUpdateControllers error:', err.message);
-  }
-}
-
-// --- HTTP ---
-
-const server = http.createServer((req, res) => {
-  try {
-    if (req.url === '/health') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ok', service: 'planning-poker' }));
-      return;
-    }
-
-    const parsedUrl = new URL(
-      req.url,
-      `http://${req.headers.host || 'localhost'}`,
-    );
-    let pathname = parsedUrl.pathname;
-
-    let filePath = join(
-      __dirname,
-      'dist',
-      pathname === '/' ? 'index.html' : pathname,
-    );
-
-    if (
-      !existsSync(filePath) ||
-      (existsSync(filePath) && statSync(filePath).isDirectory())
-    ) {
-      filePath = join(__dirname, 'dist', 'index.html');
-    }
-
-    if (existsSync(filePath) && !statSync(filePath).isDirectory()) {
-      const ext = filePath.split('.').pop();
-      const contentTypes = {
-        html: 'text/html',
-        js: 'application/javascript',
-        css: 'text/css',
-        json: 'application/json',
-        png: 'image/png',
-        jpg: 'image/jpeg',
-        svg: 'image/svg+xml',
-        ico: 'image/x-icon',
-      };
-
-      const contentType = contentTypes[ext] || 'application/octet-stream';
-
-      try {
-        const content = readFileSync(filePath);
-        res.writeHead(200, { 'Content-Type': contentType });
-        res.end(content);
-      } catch (err) {
-        console.error('Error serving file:', err);
-        res.writeHead(500, { 'Content-Type': 'text/plain' });
-        res.end('Internal Server Error');
-      }
-    } else {
-      res.writeHead(404, { 'Content-Type': 'text/plain' });
-      res.end('Not Found');
-    }
-  } catch (err) {
-    console.error('Request handling error:', err);
-    res.writeHead(500, { 'Content-Type': 'text/plain' });
-    res.end('Internal Server Error');
-  }
-});
-
-const wss = new WebSocketServer({ server });
 
 const HEARTBEAT_INTERVAL_MS = 10_000;
 const heartbeat = setInterval(() => {
@@ -142,157 +28,13 @@ const heartbeat = setInterval(() => {
 
 wss.on('close', () => clearInterval(heartbeat));
 
-const rooms = new Map();
-
-function generateId() {
-  return Math.random().toString(36).substring(2, 9);
-}
-
-function createRoom(roomId, creatorId = null) {
-  if (!rooms.has(roomId)) {
-    rooms.set(roomId, {
-      participants: [],
-      votesRevealed: false,
-      currentVotes: {},
-      roomId: roomId,
-      creatorId: creatorId,
-      controllers: [],
-    });
-  }
-  return rooms.get(roomId);
-}
-
-function getSafeState(client, roomId) {
-  const roomState = rooms.get(roomId);
-  if (!roomState) return null;
-
-  try {
-    const clientState = JSON.parse(JSON.stringify(roomState));
-
-    const isCreator = roomState.creatorId === client.userId;
-    const controllers = Array.isArray(roomState.controllers)
-      ? roomState.controllers
-      : [];
-
-    clientState.isCreator = isCreator;
-    clientState.canControlVotes =
-      isCreator || controllers.includes(client.userId);
-
-    clientState.participants.forEach((p) => {
-      p.canControlVotes =
-        p.id === roomState.creatorId || controllers.includes(p.id);
-    });
-
-    if (!clientState.votesRevealed) {
-      clientState.participants.forEach((p) => {
-        if (p.id !== client.userId) {
-          delete p.vote;
-        }
-      });
-
-      const userVote = clientState.currentVotes[client.userId];
-      clientState.currentVotes = {};
-
-      if (userVote) {
-        clientState.currentVotes[client.userId] = userVote;
-      }
-    }
-
-    delete clientState.creatorId;
-    delete clientState.controllers;
-
-    return clientState;
-  } catch (error) {
-    console.error(`Error in getSafeState for room ${roomId}:`, error);
-    return null;
-  }
-}
-
-function broadcastState(roomId) {
-  const roomState = rooms.get(roomId);
-  if (!roomState) return;
-
-  wss.clients.forEach((client) => {
-    try {
-      if (client.readyState === WebSocket.OPEN && client.roomId === roomId) {
-        const safeState = getSafeState(client, roomId);
-        if (safeState) {
-          client.send(
-            JSON.stringify({
-              type: 'state',
-              payload: safeState,
-            }),
-          );
-        }
-      }
-    } catch (error) {
-      console.error(`Error broadcasting to client in room ${roomId}:`, error);
-    }
-  });
-}
-
-function updateOnlineStatus() {
-  try {
-    rooms.forEach((gameState, roomId) => {
-      gameState.participants.forEach((participant) => {
-        participant.isOnline = false;
-      });
-
-      wss.clients.forEach((ws) => {
-        if (
-          ws.userId &&
-          ws.roomId === roomId &&
-          ws.readyState === WebSocket.OPEN
-        ) {
-          const participant = gameState.participants.find(
-            (p) => p.id === ws.userId,
-          );
-          if (participant) {
-            participant.isOnline = true;
-          }
-        }
-      });
-
-      broadcastState(roomId);
-    });
-  } catch (error) {
-    console.error('Error in updateOnlineStatus:', error);
-  }
-}
-
-// Восстанавливает admin/controller статус участника по имени из БД
-function applyDbAdminData(gameState, dbData, participant) {
-  if (!dbData) return;
-
-  if (
-    dbData.creatorName &&
-    participant.name.toLowerCase() === dbData.creatorName.toLowerCase()
-  ) {
-    if (!gameState.creatorId) {
-      gameState.creatorId = participant.id;
-      console.log(
-        `Восстановлен создатель комнаты ${gameState.roomId}: ${participant.name}`,
-      );
-    }
-  }
-
-  if (
-    Array.isArray(dbData.controllerNames) &&
-    dbData.controllerNames.some(
-      (n) => n.toLowerCase() === participant.name.toLowerCase(),
-    )
-  ) {
-    if (!gameState.controllers.includes(participant.id)) {
-      gameState.controllers.push(participant.id);
-    }
-  }
-}
-
 wss.on('connection', (ws) => {
   console.log('Новое подключение WebSocket');
+
   ws.userId = null;
   ws.roomId = null;
   ws.isAlive = true;
+
   ws.on('pong', () => {
     ws.isAlive = true;
   });
@@ -303,7 +45,17 @@ wss.on('connection', (ws) => {
 
       switch (message.type) {
         case 'join': {
-          const { name, roomId: requestedRoomId } = message.payload || {};
+          const { name, roomId: requestedRoomId = 0 } = message.payload || {};
+
+          if (requestedRoomId?.length > 7) {
+            ws.send(
+              JSON.stringify({
+                type: 'error',
+                payload: { message: 'Не валидный формат roomId' },
+              }),
+            );
+            return;
+          }
 
           if (!name || typeof name !== 'string' || name.trim() === '') {
             ws.send(
@@ -316,24 +68,31 @@ wss.on('connection', (ws) => {
           }
 
           let roomId = requestedRoomId;
+
           if (!roomId) {
             roomId = generateId();
+
             console.log(`Создана новая комната: ${roomId}`);
           }
 
           let gameState = rooms.get(roomId);
+
           if (!gameState) {
-            if (requestedRoomId) {
-              console.log(`Комната ${roomId} не найдена, создаем новую.`);
-            }
             gameState = createRoom(roomId);
+
+            if (requestedRoomId) {
+              // Комната не найдена в памяти — восстанавливаем создателя из БД
+              console.log(`Комната ${roomId} не найдена в памяти, восстанавливаем из БД.`);
+              const storedCreatorName = await getRoomCreatorName(roomId);
+              if (storedCreatorName) {
+                gameState.creatorName = storedCreatorName;
+              }
+            }
           }
 
           ws.roomId = roomId;
-          const trimmedName = name.trim();
 
-          // Загружаем данные об админе из БД один раз для этой комнаты
-          const dbData = await dbGetRoom(roomId);
+          const trimmedName = name.trim();
 
           const existingParticipant = gameState.participants.find(
             (p) => p.name.toLowerCase() === trimmedName.toLowerCase(),
@@ -341,6 +100,7 @@ wss.on('connection', (ws) => {
 
           if (existingParticipant) {
             let hadOtherConnection = false;
+
             wss.clients.forEach((client) => {
               if (
                 client !== ws &&
@@ -348,6 +108,7 @@ wss.on('connection', (ws) => {
                 client.roomId === roomId
               ) {
                 hadOtherConnection = true;
+
                 try {
                   client.close();
                 } catch (e) {
@@ -364,10 +125,6 @@ wss.on('connection', (ws) => {
 
             existingParticipant.isOnline = true;
             ws.userId = existingParticipant.id;
-
-            // Восстанавливаем права если они не были установлены в памяти
-            applyDbAdminData(gameState, dbData, existingParticipant);
-
             broadcastState(roomId);
           } else {
             const participant = {
@@ -381,16 +138,29 @@ wss.on('connection', (ws) => {
             ws.userId = participant.id;
             gameState.participants.push(participant);
 
-            // Восстанавливаем права по имени из БД
-            applyDbAdminData(gameState, dbData, participant);
+            if (!gameState.creatorId) {
+              // Если в БД есть сохранённый создатель — назначаем только если имя совпадает
+              if (gameState.creatorName) {
+                if (
+                  trimmedName.toLowerCase() ===
+                  gameState.creatorName.toLowerCase()
+                ) {
+                  gameState.creatorId = participant.id;
+                  console.log(
+                    `Создатель комнаты ${roomId} восстановлен: ${trimmedName}`,
+                  );
+                }
+              } else {
+                // Новая комната — первый участник становится создателем и сохраняется в БД
+                gameState.creatorId = participant.id;
+                gameState.creatorName = trimmedName;
 
-            // Назначаем создателем только если нет записи в БД (новая комната)
-            if (!gameState.creatorId && (!dbData || !dbData.creatorName)) {
-              gameState.creatorId = participant.id;
-              console.log(
-                `Пользователь ${trimmedName} стал создателем комнаты ${roomId}`,
-              );
-              await dbSaveRoom(roomId, trimmedName, []);
+                await saveRoomCreator(roomId, trimmedName);
+
+                console.log(
+                  `Пользователь ${trimmedName} стал создателем комнаты ${roomId}`,
+                );
+              }
             }
           }
 
@@ -409,15 +179,19 @@ wss.on('connection', (ws) => {
           }
 
           broadcastState(roomId);
+
           break;
         }
 
         case 'vote': {
           if (!ws.roomId || !ws.userId) return;
+
           const gameState = rooms.get(ws.roomId);
+
           if (!gameState) return;
 
           const { vote } = message.payload || {};
+
           if (!vote) return;
 
           const participant = gameState.participants.find(
@@ -435,12 +209,15 @@ wss.on('connection', (ws) => {
 
         case 'reset': {
           if (!ws.roomId || !ws.userId) return;
+
           const gameState = rooms.get(ws.roomId);
+
           if (!gameState) return;
 
           const controllers = Array.isArray(gameState.controllers)
             ? gameState.controllers
             : [];
+
           const canControl =
             gameState.creatorId === ws.userId ||
             controllers.includes(ws.userId);
@@ -535,19 +312,6 @@ wss.on('connection', (ws) => {
             gameState.controllers.splice(index, 1);
           }
 
-          // Сохраняем актуальный список контроллеров по именам в БД
-          const controllerNames = gameState.controllers
-            .map((id) => gameState.participants.find((p) => p.id === id)?.name)
-            .filter(Boolean);
-          const creatorParticipant = gameState.participants.find(
-            (p) => p.id === gameState.creatorId,
-          );
-          await dbSaveRoom(
-            ws.roomId,
-            creatorParticipant?.name ?? null,
-            controllerNames,
-          );
-
           broadcastState(ws.roomId);
           break;
         }
@@ -579,12 +343,16 @@ wss.on('connection', (ws) => {
 
 setInterval(updateOnlineStatus, 5000);
 
-// Запускаем сервер после подключения к MongoDB
-connectMongo().then(() => {
-  server.listen(PORT, () => {
-    console.log(`Сервер запущен на порту ${PORT}`);
-    console.log(`HTTP сервер: http://localhost:${PORT}`);
-    console.log(`WebSocket сервер: ws://localhost:${PORT}`);
-    console.log(`Health check: http://localhost:${PORT}/health`);
-  });
+server.listen(PORT, async () => {
+  console.log(`Сервер запущен на порту ${PORT}`);
+  console.log(`HTTP сервер: http://localhost:${PORT}`);
+  console.log(`WebSocket сервер: ws://localhost:${PORT}`);
+  console.log(`Health check: http://localhost:${PORT}/health`);
+
+  try {
+    await getDb();
+    console.log(`MongoDB подключена: ${process.env.MONGODB_URI}`);
+  } catch (err) {
+    console.error('Ошибка подключения к MongoDB:', err.message);
+  }
 });
