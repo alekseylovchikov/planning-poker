@@ -1,3 +1,5 @@
+import { WebSocket } from 'ws';
+
 import { wss } from './wss.js';
 import { rooms } from './rooms.js';
 import { getSafeState } from './getSafeState.js';
