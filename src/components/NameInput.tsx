@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { sanitizeName, validateName } from "../lib/utils";
+import { sanitizeName, validateName } from '../lib';
 import styles from "./NameInput.module.scss";
 
 interface NameInputProps {

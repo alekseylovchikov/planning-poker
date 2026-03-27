@@ -1,3 +1,4 @@
+import { VOTE_VALUES } from "../lib";
 import type { VoteValue } from "../types";
 import { Button } from "./ui/button";
 import styles from "./VotingCards.module.scss";
@@ -9,8 +10,6 @@ interface VotingCardsProps {
   hasVoted: boolean;
   votesRevealed: boolean;
 }
-
-const VOTE_VALUES: VoteValue[] = ["0.5", "1", "2", "3", "5", "8", "13", "???"];
 
 export const VotingCards = ({
   selectedVote,

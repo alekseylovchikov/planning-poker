@@ -5,41 +5,13 @@ import { ParticipantsList } from "./components/ParticipantsList";
 import { VotingCards } from "./components/VotingCards";
 import { VotingTable } from "./components/VotingTable";
 import { useWebSocket } from "./hooks/useWebSocket";
-import { sanitizeName } from "./lib/utils";
+import { sanitizeName, getWebSocketUrl } from "./lib";
 import type { VoteValue } from "./types";
 import styles from "./App.module.scss";
 import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
-
-// WebSocket URL - автоматически определяет протокол (ws/wss) на основе текущего протокола страницы
-const getWebSocketUrl = () => {
-  const envUrl = import.meta.env.VITE_WS_URL;
-  if (envUrl) {
-    // Если URL начинается с ws:// или wss://, используем как есть
-    if (envUrl.startsWith("ws://") || envUrl.startsWith("wss://")) {
-      return envUrl;
-    }
-    // Если URL без протокола, определяем автоматически
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    return `${protocol}//${envUrl}`;
-  }
-
-  // Автоматическое определение на основе текущего домена (для Railway и других платформ)
-  // Если приложение работает на продакшене, используем тот же домен для WebSocket
-  const hostname = window.location.hostname;
-  const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1";
-
-  if (isLocalhost) {
-    // Для разработки используем ws://localhost
-    return window.location.protocol === "https:"
-      ? "wss://localhost:8080"
-      : "ws://localhost:8080";
-  }
-
-  // Для продакшена используем тот же домен и порт (Railway обычно использует тот же домен)
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const port = window.location.port ? `:${window.location.port}` : "";
-  return `${protocol}//${hostname}${port}`;
-};
+import { ToastContainer, toast } from 'react-toastify';
+import { useAudio } from "./features/audio/usePlayAudio";
+import { SoundButton } from "./features/audio/SoundButton";
 
 const WS_URL = getWebSocketUrl();
 
@@ -59,6 +31,10 @@ function App() {
   const [selectedVote, setSelectedVote] = useState<VoteValue | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const hasAttemptedJoinRef = useRef(false);
+  const [isMuted, setIsMuted] = useState(() => {
+    return localStorage.getItem('isMuted') === 'true';
+  });
+  const { playAudio } = useAudio();
 
   const {
     isConnected,
@@ -212,6 +188,8 @@ function App() {
               origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
             });
           }, 250);
+
+          return () => clearInterval(interval);
         }
       }
     }
@@ -261,6 +239,14 @@ function App() {
       votedCount > 0 ? `${votedCount} – Planning Poker` : "Planning Poker";
   }, [gameState.participants, gameState.votesRevealed]);
 
+  const handleMuteToggle = () => {
+    setIsMuted((prev) => {
+      const next = !prev;
+      localStorage.setItem('isMuted', String(next));
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
     const prev = prevVotesRevealedRef.current;
@@ -280,14 +266,10 @@ function App() {
       if (validVotes.length > 0) {
         const firstVote = validVotes[0];
         const allEqual = validVotes.every((v) => v === firstVote);
-        const soundPath = allEqual
-          ? "/sounds/success.mp3"
-          : "/sounds/error.mp3";
 
-        const audio = new Audio(soundPath);
-        void audio.play().catch(() => {
-          // Игнорируем ошибки воспроизведения (например, ограничения автоплея)
-        });
+        if (!isMuted) {
+          playAudio(allEqual);
+        }
       }
 
       // Если вкладка не активна или браузерные уведомления недоступны/запрещены,
@@ -334,7 +316,7 @@ function App() {
         });
       }
     }
-  }, [gameState.votesRevealed, gameState.participants]);
+  }, [gameState.votesRevealed, gameState.participants, isMuted, playAudio]);
 
   // Если пользователь не ввел имя, показываем форму ввода
   if (!userName) {
@@ -357,19 +339,23 @@ function App() {
               className={styles.roomId}
               onClick={() => {
                 navigator.clipboard.writeText(window.location.href);
-                alert("Ссылка скопирована!");
+                toast.success('Ссылка скопирована!');
               }}
-              style={{ cursor: "pointer", marginRight: "10px" }}
             >
-              Комната: {gameState.roomId} (нажми чтобы скопировать)
+              Комната: {gameState.roomId} (скопировать)
             </span>
           )}
-          <span
-            className={`${styles.statusIndicator} ${
-              isConnected ? styles.connected : styles.disconnected
-            }`}
-          />
-          <span>{isConnected ? "Подключено" : "Подключение..."}</span>
+
+          <div className={styles.connectionStatusContainer}>
+            <SoundButton isMuted={isMuted} onClick={handleMuteToggle} />
+
+            <span
+              className={`${styles.statusIndicator} ${
+                isConnected ? styles.connected : styles.disconnected
+              }`}
+            />
+            <span>{isConnected ? 'Подключено' : 'Подключение...'}</span>
+          </div>
         </div>
       </div>
 
@@ -412,6 +398,8 @@ function App() {
           </div>
         </div>
       </div>
+
+      <ToastContainer />
     </div>
   );
 }
