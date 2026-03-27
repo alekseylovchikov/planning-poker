@@ -1,13 +1,68 @@
+import 'dotenv/config';
 import { WebSocketServer, WebSocket } from 'ws';
 import http from 'http';
 import { readFileSync, existsSync, statSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { MongoClient } from 'mongodb';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const PORT = process.env.PORT || 8080;
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
+const DB_NAME = 'planning_poker';
+
+// --- MongoDB ---
+
+let roomsCol = null;
+
+async function connectMongo() {
+  try {
+    const client = new MongoClient(MONGODB_URI);
+    await client.connect();
+    const mongoDb = client.db(DB_NAME);
+    roomsCol = mongoDb.collection('rooms');
+    await roomsCol.createIndex({ roomId: 1 }, { unique: true });
+    console.log('MongoDB подключен');
+  } catch (err) {
+    console.error('MongoDB не подключен, продолжаем без персистентности:', err.message);
+  }
+}
+
+async function dbGetRoom(roomId) {
+  if (!roomsCol) return null;
+  try {
+    return await roomsCol.findOne({ roomId });
+  } catch (err) {
+    console.error('dbGetRoom error:', err.message);
+    return null;
+  }
+}
+
+async function dbSaveRoom(roomId, creatorName, controllerNames = []) {
+  if (!roomsCol) return;
+  try {
+    await roomsCol.updateOne(
+      { roomId },
+      { $set: { creatorName, controllerNames } },
+      { upsert: true },
+    );
+  } catch (err) {
+    console.error('dbSaveRoom error:', err.message);
+  }
+}
+
+async function dbUpdateControllers(roomId, controllerNames) {
+  if (!roomsCol) return;
+  try {
+    await roomsCol.updateOne({ roomId }, { $set: { controllerNames } });
+  } catch (err) {
+    console.error('dbUpdateControllers error:', err.message);
+  }
+}
+
+// --- HTTP ---
 
 const server = http.createServer((req, res) => {
   try {
@@ -205,6 +260,34 @@ function updateOnlineStatus() {
   }
 }
 
+// Восстанавливает admin/controller статус участника по имени из БД
+function applyDbAdminData(gameState, dbData, participant) {
+  if (!dbData) return;
+
+  if (
+    dbData.creatorName &&
+    participant.name.toLowerCase() === dbData.creatorName.toLowerCase()
+  ) {
+    if (!gameState.creatorId) {
+      gameState.creatorId = participant.id;
+      console.log(
+        `Восстановлен создатель комнаты ${gameState.roomId}: ${participant.name}`,
+      );
+    }
+  }
+
+  if (
+    Array.isArray(dbData.controllerNames) &&
+    dbData.controllerNames.some(
+      (n) => n.toLowerCase() === participant.name.toLowerCase(),
+    )
+  ) {
+    if (!gameState.controllers.includes(participant.id)) {
+      gameState.controllers.push(participant.id);
+    }
+  }
+}
+
 wss.on('connection', (ws) => {
   console.log('Новое подключение WebSocket');
   ws.userId = null;
@@ -214,7 +297,7 @@ wss.on('connection', (ws) => {
     ws.isAlive = true;
   });
 
-  ws.on('message', (data) => {
+  ws.on('message', async (data) => {
     try {
       const message = JSON.parse(data.toString());
 
@@ -249,6 +332,9 @@ wss.on('connection', (ws) => {
           ws.roomId = roomId;
           const trimmedName = name.trim();
 
+          // Загружаем данные об админе из БД один раз для этой комнаты
+          const dbData = await dbGetRoom(roomId);
+
           const existingParticipant = gameState.participants.find(
             (p) => p.name.toLowerCase() === trimmedName.toLowerCase(),
           );
@@ -278,6 +364,10 @@ wss.on('connection', (ws) => {
 
             existingParticipant.isOnline = true;
             ws.userId = existingParticipant.id;
+
+            // Восстанавливаем права если они не были установлены в памяти
+            applyDbAdminData(gameState, dbData, existingParticipant);
+
             broadcastState(roomId);
           } else {
             const participant = {
@@ -291,11 +381,16 @@ wss.on('connection', (ws) => {
             ws.userId = participant.id;
             gameState.participants.push(participant);
 
-            if (!gameState.creatorId) {
+            // Восстанавливаем права по имени из БД
+            applyDbAdminData(gameState, dbData, participant);
+
+            // Назначаем создателем только если нет записи в БД (новая комната)
+            if (!gameState.creatorId && (!dbData || !dbData.creatorName)) {
               gameState.creatorId = participant.id;
               console.log(
                 `Пользователь ${trimmedName} стал создателем комнаты ${roomId}`,
               );
+              await dbSaveRoom(roomId, trimmedName, []);
             }
           }
 
@@ -440,6 +535,19 @@ wss.on('connection', (ws) => {
             gameState.controllers.splice(index, 1);
           }
 
+          // Сохраняем актуальный список контроллеров по именам в БД
+          const controllerNames = gameState.controllers
+            .map((id) => gameState.participants.find((p) => p.id === id)?.name)
+            .filter(Boolean);
+          const creatorParticipant = gameState.participants.find(
+            (p) => p.id === gameState.creatorId,
+          );
+          await dbSaveRoom(
+            ws.roomId,
+            creatorParticipant?.name ?? null,
+            controllerNames,
+          );
+
           broadcastState(ws.roomId);
           break;
         }
@@ -471,9 +579,12 @@ wss.on('connection', (ws) => {
 
 setInterval(updateOnlineStatus, 5000);
 
-server.listen(PORT, () => {
-  console.log(`Сервер запущен на порту ${PORT}`);
-  console.log(`HTTP сервер: http://localhost:${PORT}`);
-  console.log(`WebSocket сервер: ws://localhost:${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
+// Запускаем сервер после подключения к MongoDB
+connectMongo().then(() => {
+  server.listen(PORT, () => {
+    console.log(`Сервер запущен на порту ${PORT}`);
+    console.log(`HTTP сервер: http://localhost:${PORT}`);
+    console.log(`WebSocket сервер: ws://localhost:${PORT}`);
+    console.log(`Health check: http://localhost:${PORT}/health`);
+  });
 });
