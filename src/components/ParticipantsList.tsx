@@ -26,67 +26,56 @@ export const ParticipantsList = ({
           {participants.length === 0 ? (
             <p className={styles.empty}>Нет участников</p>
           ) : (
-            participants
-              .sort((a, b) => {
-                if (a.isOnline && !b.isOnline) return -1;
-                if (!a.isOnline && b.isOnline) return 1;
+            participants.map((participant) => {
+              // Санитизируем имя для безопасного отображения
+              const sanitizedName = sanitizeName(participant.name);
+              const displayName = truncateName(sanitizedName, 30);
+              const isCurrentUser =
+                sanitizeName(currentUserName || "") === sanitizedName;
+              const isController = !!participant.canControlVotes;
+              const canEditControllers = !!(isCreator && onToggleController);
 
-                return 0;
-              })
-              .map((participant) => {
-                // Санитизируем имя для безопасного отображения
-                const sanitizedName = sanitizeName(participant.name);
-                const displayName = truncateName(sanitizedName, 30);
-                const isCurrentUser =
-                  sanitizeName(currentUserName || "") === sanitizedName;
-                const isController = !!participant.canControlVotes;
-                const canEditControllers = !!(isCreator && onToggleController);
-
-                return (
-                  <div
-                    key={participant.id}
-                    className={`${styles.participant} ${
-                      isCurrentUser ? styles.current : ""
-                    }`}
-                    title={
-                      sanitizedName !== displayName ? sanitizedName : undefined
-                    }
-                  >
-                    <div className={styles.info}>
-                      <span className={styles.name}>{displayName}</span>
-                      {isCurrentUser && (
-                        <span className={styles.you}>(Вы)</span>
-                      )}
-                      {isController && (
-                        <span className={styles.controllerBadge}>
-                          Модератор
-                        </span>
-                      )}
-                    </div>
-                    <div className={styles.status}>
-                      <span
-                        className={`${styles.indicator} ${
-                          participant.isOnline ? styles.online : styles.offline
-                        }`}
-                      />
-                      <span className={styles.statusText}>
-                        {participant.isOnline ? "Онлайн" : "Офлайн"}
-                      </span>
-                      {canEditControllers && !isCurrentUser && (
-                        <button
-                          type="button"
-                          className={styles.controllerToggleButton}
-                          onClick={() =>
-                            onToggleController(participant.id, !isController)
-                          }
-                        >
-                          {isController ? "Убрать права" : "Дать права"}
-                        </button>
-                      )}
-                    </div>
+              return (
+                <div
+                  key={participant.id}
+                  className={`${styles.participant} ${
+                    isCurrentUser ? styles.current : ""
+                  }`}
+                  title={
+                    sanitizedName !== displayName ? sanitizedName : undefined
+                  }
+                >
+                  <div className={styles.info}>
+                    <span className={styles.name}>{displayName}</span>
+                    {isCurrentUser && <span className={styles.you}>(Вы)</span>}
+                    {isController && (
+                      <span className={styles.controllerBadge}>Модератор</span>
+                    )}
                   </div>
-                );
-              })
+                  <div className={styles.status}>
+                    <span
+                      className={`${styles.indicator} ${
+                        participant.isOnline ? styles.online : styles.offline
+                      }`}
+                    />
+                    <span className={styles.statusText}>
+                      {participant.isOnline ? "Онлайн" : "Офлайн"}
+                    </span>
+                    {canEditControllers && !isCurrentUser && (
+                      <button
+                        type="button"
+                        className={styles.controllerToggleButton}
+                        onClick={() =>
+                          onToggleController(participant.id, !isController)
+                        }
+                      >
+                        {isController ? "Убрать права" : "Дать права"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
       </CardContent>
