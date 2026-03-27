@@ -32,7 +32,12 @@ function App() {
   const [isJoining, setIsJoining] = useState(false);
   const hasAttemptedJoinRef = useRef(false);
   const [isMuted, setIsMuted] = useState(() => {
-    return localStorage.getItem('isMuted') === 'true';
+    const value = localStorage.getItem('isMuted');
+    const parsed = value ? JSON.parse(value) : undefined;
+
+    if (typeof parsed === 'boolean') return parsed;
+
+    return true;
   });
   const { playAudio } = useAudio();
 
