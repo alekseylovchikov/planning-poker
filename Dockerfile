@@ -23,5 +23,5 @@ RUN npm prune --production
 EXPOSE 8080
 
 # Запускаем сервер
-CMD ["node", "server-example.js"]
+CMD ["node", "server.js"]
 

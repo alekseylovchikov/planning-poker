@@ -14,13 +14,11 @@
 1. **Создайте аккаунт на [Railway](https://railway.app/)**
 
 2. **Подключите репозиторий:**
-
    - Нажмите "New Project"
    - Выберите "Deploy from GitHub repo"
    - Выберите ваш репозиторий
 
 3. **Настройте переменные окружения в Railway:**
-
    - Перейдите в настройки проекта → Variables
    - Добавьте переменную `VITE_WS_URL` (ВАЖНО: установите ДО первой сборки!)
    - Значение: `your-app.railway.app` (без протокола, без порта)
@@ -53,15 +51,13 @@
 1. **Создайте аккаунт на [Render](https://render.com/)**
 
 2. **Деплой WebSocket сервера:**
-
    - New → Web Service
    - Подключите GitHub репозиторий
    - Build Command: `npm install`
-   - Start Command: `node server-example.js`
+   - Start Command: `node server.js`
    - Environment: `Node`
 
 3. **Деплой Frontend (Static Site):**
-
    - New → Static Site
    - Build Command: `npm run build`
    - Publish Directory: `dist`
@@ -106,7 +102,6 @@
 ### Frontend на Vercel/Netlify:
 
 1. **Vercel:**
-
    - Подключите репозиторий
    - Build Command: `npm run build`
    - Output Directory: `dist`
@@ -127,17 +122,14 @@
 ## Важные замечания:
 
 1. **WebSocket URL:**
-
    - В продакшене используйте `wss://` (WebSocket Secure) вместо `ws://`
    - Убедитесь, что платформа поддерживает WebSocket
 
 2. **Переменные окружения:**
-
    - `PORT` - обычно устанавливается автоматически платформой
    - `NODE_ENV=production` - для продакшена
 
 3. **HTTPS:**
-
    - Все современные платформы предоставляют HTTPS автоматически
    - WebSocket через HTTPS использует протокол WSS
 
