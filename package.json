@@ -11,10 +11,10 @@
     "start": "node server"
   },
   "dependencies": {
-    "dotenv": "^16.4.5",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^16.6.1",
     "lucide-react": "^0.553.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
