@@ -15,6 +15,7 @@ interface VotingTableProps {
 
 const voteToNumber = (vote: VoteValue | undefined): number | null => {
   if (!vote || vote === '???') return null;
+
   return parseFloat(vote);
 };
 
@@ -64,8 +65,15 @@ export const VotingTable = ({
           ) : (
             <div className={styles.table}>
               {votedParticipants
-                .sort(({ vote: aVote = '0' }, { vote: bVote = '0' }) => {
-                  return aVote.localeCompare(bVote);
+                .sort(({ vote: aVote }, { vote: bVote }) => {
+                  const aNum = voteToNumber(aVote);
+                  const bNum = voteToNumber(bVote);
+
+                  if (aNum === null && bNum === null) return 0;
+                  if (aNum === null) return 1;
+                  if (bNum === null) return -1;
+
+                  return aNum - bNum;
                 })
                 .map((participant) => {
                   const sanitizedName = sanitizeName(participant.name);
