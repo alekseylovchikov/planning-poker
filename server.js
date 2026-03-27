@@ -1,90 +1,78 @@
-/**
- * Пример WebSocket сервера для Planning Poker
- *
- * Запуск: node server-example.js
- *
- * Требуется установка: npm install ws
- */
-
-import { WebSocketServer, WebSocket } from "ws";
-import http from "http";
-import { readFileSync, existsSync, statSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
+import { WebSocketServer, WebSocket } from 'ws';
+import http from 'http';
+import { readFileSync, existsSync, statSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const PORT = process.env.PORT || 8080;
 
-// Создаем HTTP сервер для health check и статических файлов
 const server = http.createServer((req, res) => {
   try {
-    // Health check endpoint
-    if (req.url === "/health") {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "ok", service: "planning-poker" }));
+    if (req.url === '/health') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok', service: 'planning-poker' }));
       return;
     }
 
-    // Парсим URL для получения чистого пути без query параметров
-    // Используем dummy host, так как нам нужен только pathname
-    const parsedUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+    const parsedUrl = new URL(
+      req.url,
+      `http://${req.headers.host || 'localhost'}`,
+    );
     let pathname = parsedUrl.pathname;
 
-    // Раздача статических файлов из dist
     let filePath = join(
       __dirname,
-      "dist",
-      pathname === "/" ? "index.html" : pathname
+      'dist',
+      pathname === '/' ? 'index.html' : pathname,
     );
 
-    // Если файл не найден, отдаем index.html (для SPA routing)
-    if (!existsSync(filePath) || (existsSync(filePath) && statSync(filePath).isDirectory())) {
-      filePath = join(__dirname, "dist", "index.html");
+    if (
+      !existsSync(filePath) ||
+      (existsSync(filePath) && statSync(filePath).isDirectory())
+    ) {
+      filePath = join(__dirname, 'dist', 'index.html');
     }
 
     if (existsSync(filePath) && !statSync(filePath).isDirectory()) {
-      const ext = filePath.split(".").pop();
+      const ext = filePath.split('.').pop();
       const contentTypes = {
-        html: "text/html",
-        js: "application/javascript",
-        css: "text/css",
-        json: "application/json",
-        png: "image/png",
-        jpg: "image/jpeg",
-        svg: "image/svg+xml",
-        ico: "image/x-icon",
+        html: 'text/html',
+        js: 'application/javascript',
+        css: 'text/css',
+        json: 'application/json',
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        svg: 'image/svg+xml',
+        ico: 'image/x-icon',
       };
 
-      const contentType = contentTypes[ext] || "application/octet-stream";
+      const contentType = contentTypes[ext] || 'application/octet-stream';
 
       try {
         const content = readFileSync(filePath);
-        res.writeHead(200, { "Content-Type": contentType });
+        res.writeHead(200, { 'Content-Type': contentType });
         res.end(content);
       } catch (err) {
-        console.error("Error serving file:", err);
-        res.writeHead(500, { "Content-Type": "text/plain" });
-        res.end("Internal Server Error");
+        console.error('Error serving file:', err);
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('Internal Server Error');
       }
     } else {
-      res.writeHead(404, { "Content-Type": "text/plain" });
-      res.end("Not Found");
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('Not Found');
     }
   } catch (err) {
-    console.error("Request handling error:", err);
-    res.writeHead(500, { "Content-Type": "text/plain" });
-    res.end("Internal Server Error");
+    console.error('Request handling error:', err);
+    res.writeHead(500, { 'Content-Type': 'text/plain' });
+    res.end('Internal Server Error');
   }
 });
 
-// Создаем WebSocket сервер на том же HTTP сервере
 const wss = new WebSocketServer({ server });
 
-// Heartbeat: раз в 10 секунд пингуем все соединения.
-// Если клиент не ответил на предыдущий пинг — соединение "зомби",
-// принудительно закрываем его, чтобы освободить слот для переподключения.
 const HEARTBEAT_INTERVAL_MS = 10_000;
 const heartbeat = setInterval(() => {
   wss.clients.forEach((ws) => {
@@ -97,17 +85,14 @@ const heartbeat = setInterval(() => {
   });
 }, HEARTBEAT_INTERVAL_MS);
 
-wss.on("close", () => clearInterval(heartbeat));
+wss.on('close', () => clearInterval(heartbeat));
 
-// Хранилище состояния комнат: roomId -> GameState
 const rooms = new Map();
 
-// Функция для генерации уникального ID
 function generateId() {
   return Math.random().toString(36).substring(2, 9);
 }
 
-// Создание новой комнаты
 function createRoom(roomId, creatorId = null) {
   if (!rooms.has(roomId)) {
     rooms.set(roomId, {
@@ -122,16 +107,13 @@ function createRoom(roomId, creatorId = null) {
   return rooms.get(roomId);
 }
 
-// Функция для получения безопасного состояния для конкретного клиента
 function getSafeState(client, roomId) {
   const roomState = rooms.get(roomId);
   if (!roomState) return null;
 
   try {
-    // Клонируем состояние, чтобы не мутировать оригинал
     const clientState = JSON.parse(JSON.stringify(roomState));
 
-    // Добавляем флаги прав для текущего пользователя и участников
     const isCreator = roomState.creatorId === client.userId;
     const controllers = Array.isArray(roomState.controllers)
       ? roomState.controllers
@@ -146,24 +128,21 @@ function getSafeState(client, roomId) {
         p.id === roomState.creatorId || controllers.includes(p.id);
     });
 
-    // Если карты не открыты, скрываем голоса других участников
     if (!clientState.votesRevealed) {
       clientState.participants.forEach((p) => {
-        // Скрываем голос, если это не текущий пользователь
         if (p.id !== client.userId) {
           delete p.vote;
         }
       });
 
-      // Пересобираем currentVotes, оставляя только голос текущего пользователя
       const userVote = clientState.currentVotes[client.userId];
       clientState.currentVotes = {};
+
       if (userVote) {
         clientState.currentVotes[client.userId] = userVote;
       }
     }
 
-    // Удаляем creatorId из отправляемого состояния (не нужен на клиенте)
     delete clientState.creatorId;
     delete clientState.controllers;
 
@@ -174,7 +153,6 @@ function getSafeState(client, roomId) {
   }
 }
 
-// Функция для отправки состояния всем клиентам в комнате
 function broadcastState(roomId) {
   const roomState = rooms.get(roomId);
   if (!roomState) return;
@@ -186,9 +164,9 @@ function broadcastState(roomId) {
         if (safeState) {
           client.send(
             JSON.stringify({
-              type: "state",
+              type: 'state',
               payload: safeState,
-            })
+            }),
           );
         }
       }
@@ -198,7 +176,6 @@ function broadcastState(roomId) {
   });
 }
 
-// Функция для обновления статуса онлайн
 function updateOnlineStatus() {
   try {
     rooms.forEach((gameState, roomId) => {
@@ -207,9 +184,13 @@ function updateOnlineStatus() {
       });
 
       wss.clients.forEach((ws) => {
-        if (ws.userId && ws.roomId === roomId && ws.readyState === WebSocket.OPEN) {
+        if (
+          ws.userId &&
+          ws.roomId === roomId &&
+          ws.readyState === WebSocket.OPEN
+        ) {
           const participant = gameState.participants.find(
-            (p) => p.id === ws.userId
+            (p) => p.id === ws.userId,
           );
           if (participant) {
             participant.isOnline = true;
@@ -220,86 +201,85 @@ function updateOnlineStatus() {
       broadcastState(roomId);
     });
   } catch (error) {
-    console.error("Error in updateOnlineStatus:", error);
+    console.error('Error in updateOnlineStatus:', error);
   }
 }
 
-wss.on("connection", (ws) => {
-  console.log("Новое подключение WebSocket");
+wss.on('connection', (ws) => {
+  console.log('Новое подключение WebSocket');
   ws.userId = null;
   ws.roomId = null;
   ws.isAlive = true;
-  ws.on("pong", () => { ws.isAlive = true; });
+  ws.on('pong', () => {
+    ws.isAlive = true;
+  });
 
-  ws.on("message", (data) => {
+  ws.on('message', (data) => {
     try {
       const message = JSON.parse(data.toString());
 
       switch (message.type) {
-        case "join": {
+        case 'join': {
           const { name, roomId: requestedRoomId } = message.payload || {};
 
-          if (!name || typeof name !== 'string' || name.trim() === "") {
+          if (!name || typeof name !== 'string' || name.trim() === '') {
             ws.send(
               JSON.stringify({
-                type: "error",
-                payload: { message: "Имя не может быть пустым" },
-              })
+                type: 'error',
+                payload: { message: 'Имя не может быть пустым' },
+              }),
             );
             return;
           }
 
           let roomId = requestedRoomId;
           if (!roomId) {
-             roomId = generateId();
-             console.log(`Создана новая комната: ${roomId}`);
+            roomId = generateId();
+            console.log(`Создана новая комната: ${roomId}`);
           }
 
-          // Проверяем существование комнаты или создаем новую
           let gameState = rooms.get(roomId);
           if (!gameState) {
-              if (requestedRoomId) {
-                   console.log(`Комната ${roomId} не найдена, создаем новую.`);
-              }
-              gameState = createRoom(roomId);
+            if (requestedRoomId) {
+              console.log(`Комната ${roomId} не найдена, создаем новую.`);
+            }
+            gameState = createRoom(roomId);
           }
 
           ws.roomId = roomId;
           const trimmedName = name.trim();
 
-          // Проверяем, есть ли уже участник с таким именем в ЭТОЙ комнате
           const existingParticipant = gameState.participants.find(
-            (p) => p.name.toLowerCase() === trimmedName.toLowerCase()
+            (p) => p.name.toLowerCase() === trimmedName.toLowerCase(),
           );
 
           if (existingParticipant) {
-            // Закрываем все старые соединения для этого участника в этой комнате
-            // и разрешаем переподключение (последнее соединение побеждает).
-            // Это решает гонку состояний: когда клиент переподключается после
-            // смены вкладки, сервер может ещё видеть старое соединение как OPEN,
-            // хотя оно уже закрывается. Вместо name_taken принудительно вытесняем
-            // старое соединение и принимаем новое.
             let hadOtherConnection = false;
             wss.clients.forEach((client) => {
-              if (client !== ws && client.userId === existingParticipant.id && client.roomId === roomId) {
+              if (
+                client !== ws &&
+                client.userId === existingParticipant.id &&
+                client.roomId === roomId
+              ) {
                 hadOtherConnection = true;
                 try {
                   client.close();
                 } catch (e) {
-                  console.error("Error closing old connection:", e);
+                  console.error('Error closing old connection:', e);
                 }
               }
             });
 
             if (hadOtherConnection) {
-              console.log(`Переподключение участника: ${trimmedName} в комнате ${roomId}`);
+              console.log(
+                `Переподключение участника: ${trimmedName} в комнате ${roomId}`,
+              );
             }
 
             existingParticipant.isOnline = true;
             ws.userId = existingParticipant.id;
             broadcastState(roomId);
           } else {
-            // Создание нового участника
             const participant = {
               id: generateId(),
               name: trimmedName,
@@ -311,34 +291,33 @@ wss.on("connection", (ws) => {
             ws.userId = participant.id;
             gameState.participants.push(participant);
 
-            // Если это первый участник в комнате, делаем его создателем
             if (!gameState.creatorId) {
               gameState.creatorId = participant.id;
-              console.log(`Пользователь ${trimmedName} стал создателем комнаты ${roomId}`);
+              console.log(
+                `Пользователь ${trimmedName} стал создателем комнаты ${roomId}`,
+              );
             }
           }
 
-          // Отправляем состояние новому участнику
           try {
             const safeState = getSafeState(ws, roomId);
             if (safeState) {
               ws.send(
                 JSON.stringify({
-                  type: "state",
+                  type: 'state',
                   payload: safeState,
-                })
+                }),
               );
             }
           } catch (e) {
-             console.error("Error sending initial state:", e);
+            console.error('Error sending initial state:', e);
           }
 
-          // Отправляем состояние всем остальным в комнате
           broadcastState(roomId);
           break;
         }
 
-        case "vote": {
+        case 'vote': {
           if (!ws.roomId || !ws.userId) return;
           const gameState = rooms.get(ws.roomId);
           if (!gameState) return;
@@ -347,7 +326,7 @@ wss.on("connection", (ws) => {
           if (!vote) return;
 
           const participant = gameState.participants.find(
-            (p) => p.id === ws.userId
+            (p) => p.id === ws.userId,
           );
 
           if (participant) {
@@ -359,12 +338,11 @@ wss.on("connection", (ws) => {
           break;
         }
 
-        case "reset": {
+        case 'reset': {
           if (!ws.roomId || !ws.userId) return;
           const gameState = rooms.get(ws.roomId);
           if (!gameState) return;
 
-          // Только создатель комнаты и отмеченные пользователи могут сбрасывать голоса
           const controllers = Array.isArray(gameState.controllers)
             ? gameState.controllers
             : [];
@@ -375,9 +353,11 @@ wss.on("connection", (ws) => {
           if (!canControl) {
             ws.send(
               JSON.stringify({
-                type: "error",
-                payload: { message: "Только создатель комнаты может сбрасывать голоса" },
-              })
+                type: 'error',
+                payload: {
+                  message: 'Только создатель комнаты может сбрасывать голоса',
+                },
+              }),
             );
             return;
           }
@@ -392,12 +372,11 @@ wss.on("connection", (ws) => {
           break;
         }
 
-        case "reveal": {
+        case 'reveal': {
           if (!ws.roomId || !ws.userId) return;
           const gameState = rooms.get(ws.roomId);
           if (!gameState) return;
 
-          // Только создатель комнаты и отмеченные пользователи могут открывать карты
           const controllers = Array.isArray(gameState.controllers)
             ? gameState.controllers
             : [];
@@ -408,9 +387,11 @@ wss.on("connection", (ws) => {
           if (!canControl) {
             ws.send(
               JSON.stringify({
-                type: "error",
-                payload: { message: "Только создатель комнаты может открывать карты" },
-              })
+                type: 'error',
+                payload: {
+                  message: 'Только создатель комнаты может открывать карты',
+                },
+              }),
             );
             return;
           }
@@ -420,21 +401,20 @@ wss.on("connection", (ws) => {
           break;
         }
 
-        case "set_controller": {
+        case 'set_controller': {
           if (!ws.roomId || !ws.userId) return;
           const gameState = rooms.get(ws.roomId);
           if (!gameState) return;
 
-          // Только создатель комнаты может управлять правами
           if (gameState.creatorId !== ws.userId) {
             ws.send(
               JSON.stringify({
-                type: "error",
+                type: 'error',
                 payload: {
                   message:
-                    "Только создатель комнаты может изменять права на открытие и сброс карт",
+                    'Только создатель комнаты может изменять права на открытие и сброс карт',
                 },
-              })
+              }),
             );
             return;
           }
@@ -443,7 +423,7 @@ wss.on("connection", (ws) => {
           if (!participantId) return;
 
           const participantExists = gameState.participants.some(
-            (p) => p.id === participantId
+            (p) => p.id === participantId,
           );
           if (!participantExists) return;
 
@@ -465,35 +445,32 @@ wss.on("connection", (ws) => {
         }
       }
     } catch (error) {
-      console.error("Ошибка обработки сообщения:", error);
+      console.error('Ошибка обработки сообщения:', error);
     }
   });
 
-  ws.on("close", () => {
+  ws.on('close', () => {
     try {
-        if (ws.roomId && ws.userId) {
-           const gameState = rooms.get(ws.roomId);
-           if (gameState) {
-              const participant = gameState.participants.find(
-                (p) => p.id === ws.userId
-              );
-              if (participant) {
-                participant.isOnline = false;
-              }
-           }
+      if (ws.roomId && ws.userId) {
+        const gameState = rooms.get(ws.roomId);
+        if (gameState) {
+          const participant = gameState.participants.find(
+            (p) => p.id === ws.userId,
+          );
+          if (participant) {
+            participant.isOnline = false;
+          }
         }
-        // Используем nextTick или setTimeout, чтобы обновление произошло после закрытия
-        setTimeout(updateOnlineStatus, 100);
+      }
+      setTimeout(updateOnlineStatus, 100);
     } catch (error) {
-        console.error("Error in close handler:", error);
+      console.error('Error in close handler:', error);
     }
   });
 });
 
-// Периодическое обновление статуса онлайн
 setInterval(updateOnlineStatus, 5000);
 
-// Запускаем HTTP сервер
 server.listen(PORT, () => {
   console.log(`Сервер запущен на порту ${PORT}`);
   console.log(`HTTP сервер: http://localhost:${PORT}`);
