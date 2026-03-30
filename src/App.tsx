@@ -341,9 +341,6 @@ function App() {
       <div className={styles.header}>
         <h1 className={styles.title}>Planning Poker</h1>
         <div className={styles.connectionStatus}>
-          <a type="button" href={window.location.origin}>
-            Создать новую комнату
-          </a>
           {gameState.roomId && (
             <span
               className={styles.roomId}
@@ -355,6 +352,14 @@ function App() {
               Комната: {gameState.roomId} (скопировать)
             </span>
           )}
+
+          <a
+            className={styles.createNewRoomLink}
+            type="button"
+            href={window.location.origin}
+          >
+            Создать новую комнату
+          </a>
 
           <div className={styles.connectionStatusContainer}>
             <MuteButton isMuted={isMuted} onClick={handleMuteToggle} />

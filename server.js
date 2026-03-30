@@ -1,3 +1,5 @@
+import isEmpty from 'lodash/isEmpty.js';
+
 import { createdServer as server } from './backend/createdServer.js';
 import { createRoom } from './backend/createRoom.js';
 import { getSafeState } from './backend/getSafeState.js';
@@ -19,9 +21,12 @@ const heartbeat = setInterval(() => {
   wss.clients.forEach((ws) => {
     if (ws.isAlive === false) {
       ws.terminate();
+
       return;
     }
+
     ws.isAlive = false;
+
     ws.ping();
   });
 }, HEARTBEAT_INTERVAL_MS);
@@ -45,9 +50,9 @@ wss.on('connection', (ws) => {
 
       switch (message.type) {
         case 'join': {
-          const { name, roomId: requestedRoomId = 0 } = message.payload || {};
+          const { name, roomId: requestedRoomId } = message.payload || {};
 
-          if (requestedRoomId?.length > 7) {
+          if (requestedRoomId && typeof requestedRoomId === "string" && requestedRoomId.length > 7) {
             ws.send(
               JSON.stringify({
                 type: 'error',
@@ -57,7 +62,7 @@ wss.on('connection', (ws) => {
             return;
           }
 
-          if (!name || typeof name !== 'string' || name.trim() === '') {
+          if (isEmpty(name.trim())) {
             ws.send(
               JSON.stringify({
                 type: 'error',
