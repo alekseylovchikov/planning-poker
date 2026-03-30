@@ -1,18 +1,15 @@
-import isEmpty from 'lodash/isEmpty.js';
-
-import { createdServer as server } from './backend/createdServer.js';
-import { createRoom } from './backend/createRoom.js';
-import { getSafeState } from './backend/getSafeState.js';
-import { wss } from './backend/wss.js';
-import { updateOnlineStatus } from './backend/updateOnlineStatus.js';
-import { rooms } from './backend/rooms.js';
 import { broadcastState } from './backend/broadcastState.js';
-import { generateId } from './backend/generateId.js';
-import {
-  saveRoomCreator,
-  getRoomCreatorName,
-} from './backend/roomCreatorsDb.js';
+import { createdServer as server } from './backend/createdServer.js';
 import { getDb } from './backend/db.js';
+import { rooms } from './backend/rooms.js';
+import { updateOnlineStatus } from './backend/updateOnlineStatus.js';
+import { wss } from './backend/wss.js';
+// events
+import { join } from './backend/events/join.js';
+import { vote } from './backend/events/vote.js';
+import { reset } from './backend/events/reset.js';
+import { reveal } from './backend/events/reveal.js';
+import { setController } from './backend/events/setController.js';
 
 const PORT = process.env.PORT || 8080;
 
@@ -50,274 +47,32 @@ wss.on('connection', (ws) => {
 
       switch (message.type) {
         case 'join': {
-          const { name, roomId: requestedRoomId } = message.payload || {};
-
-          if (requestedRoomId && typeof requestedRoomId === "string" && requestedRoomId.length > 7) {
-            ws.send(
-              JSON.stringify({
-                type: 'error',
-                payload: { message: 'Не валидный формат roomId' },
-              }),
-            );
-            return;
-          }
-
-          if (isEmpty(name.trim())) {
-            ws.send(
-              JSON.stringify({
-                type: 'error',
-                payload: { message: 'Имя не может быть пустым' },
-              }),
-            );
-            return;
-          }
-
-          let roomId = requestedRoomId;
-
-          if (!roomId) {
-            roomId = generateId();
-
-            console.log(`Создана новая комната: ${roomId}`);
-          }
-
-          let gameState = rooms.get(roomId);
-
-          if (!gameState) {
-            gameState = createRoom(roomId);
-
-            if (requestedRoomId) {
-              // Комната не найдена в памяти — восстанавливаем создателя из БД
-              console.log(`Комната ${roomId} не найдена в памяти, восстанавливаем из БД.`);
-              const storedCreatorName = await getRoomCreatorName(roomId);
-              if (storedCreatorName) {
-                gameState.creatorName = storedCreatorName;
-              }
-            }
-          }
-
-          ws.roomId = roomId;
-
-          const trimmedName = name.trim();
-
-          const existingParticipant = gameState.participants.find(
-            (p) => p.name.toLowerCase() === trimmedName.toLowerCase(),
-          );
-
-          if (existingParticipant) {
-            let hadOtherConnection = false;
-
-            wss.clients.forEach((client) => {
-              if (
-                client !== ws &&
-                client.userId === existingParticipant.id &&
-                client.roomId === roomId
-              ) {
-                hadOtherConnection = true;
-
-                try {
-                  client.close();
-                } catch (e) {
-                  console.error('Error closing old connection:', e);
-                }
-              }
-            });
-
-            if (hadOtherConnection) {
-              console.log(
-                `Переподключение участника: ${trimmedName} в комнате ${roomId}`,
-              );
-            }
-
-            existingParticipant.isOnline = true;
-            ws.userId = existingParticipant.id;
-            broadcastState(roomId);
-          } else {
-            const participant = {
-              id: generateId(),
-              name: trimmedName,
-              isOnline: true,
-              vote: undefined,
-              hasVoted: false,
-            };
-
-            ws.userId = participant.id;
-            gameState.participants.push(participant);
-
-            if (!gameState.creatorId) {
-              // Если в БД есть сохранённый создатель — назначаем только если имя совпадает
-              if (gameState.creatorName) {
-                if (
-                  trimmedName.toLowerCase() ===
-                  gameState.creatorName.toLowerCase()
-                ) {
-                  gameState.creatorId = participant.id;
-                  console.log(
-                    `Создатель комнаты ${roomId} восстановлен: ${trimmedName}`,
-                  );
-                }
-              } else {
-                // Новая комната — первый участник становится создателем и сохраняется в БД
-                gameState.creatorId = participant.id;
-                gameState.creatorName = trimmedName;
-
-                await saveRoomCreator(roomId, trimmedName);
-
-                console.log(
-                  `Пользователь ${trimmedName} стал создателем комнаты ${roomId}`,
-                );
-              }
-            }
-          }
-
-          try {
-            const safeState = getSafeState(ws, roomId);
-            if (safeState) {
-              ws.send(
-                JSON.stringify({
-                  type: 'state',
-                  payload: safeState,
-                }),
-              );
-            }
-          } catch (e) {
-            console.error('Error sending initial state:', e);
-          }
-
-          broadcastState(roomId);
+          void join(ws, message);
 
           break;
         }
 
         case 'vote': {
-          if (!ws.roomId || !ws.userId) return;
+          vote(ws, message);
 
-          const gameState = rooms.get(ws.roomId);
-
-          if (!gameState) return;
-
-          const { vote } = message.payload || {};
-
-          if (!vote) return;
-
-          const participant = gameState.participants.find(
-            (p) => p.id === ws.userId,
-          );
-
-          if (participant) {
-            participant.vote = vote;
-            participant.hasVoted = true;
-            gameState.currentVotes[participant.id] = vote;
-            broadcastState(ws.roomId);
-          }
           break;
         }
 
         case 'reset': {
-          if (!ws.roomId || !ws.userId) return;
+          reset(ws);
 
-          const gameState = rooms.get(ws.roomId);
-
-          if (!gameState) return;
-
-          const controllers = Array.isArray(gameState.controllers)
-            ? gameState.controllers
-            : [];
-
-          const canControl =
-            gameState.creatorId === ws.userId ||
-            controllers.includes(ws.userId);
-
-          if (!canControl) {
-            ws.send(
-              JSON.stringify({
-                type: 'error',
-                payload: {
-                  message: 'Только создатель комнаты может сбрасывать голоса',
-                },
-              }),
-            );
-            return;
-          }
-
-          gameState.participants.forEach((participant) => {
-            participant.vote = undefined;
-            participant.hasVoted = false;
-          });
-          gameState.votesRevealed = false;
-          gameState.currentVotes = {};
-          broadcastState(ws.roomId);
           break;
         }
 
         case 'reveal': {
-          if (!ws.roomId || !ws.userId) return;
-          const gameState = rooms.get(ws.roomId);
-          if (!gameState) return;
+          reveal(ws);
 
-          const controllers = Array.isArray(gameState.controllers)
-            ? gameState.controllers
-            : [];
-          const canControl =
-            gameState.creatorId === ws.userId ||
-            controllers.includes(ws.userId);
-
-          if (!canControl) {
-            ws.send(
-              JSON.stringify({
-                type: 'error',
-                payload: {
-                  message: 'Только создатель комнаты может открывать карты',
-                },
-              }),
-            );
-            return;
-          }
-
-          gameState.votesRevealed = true;
-          broadcastState(ws.roomId);
           break;
         }
 
         case 'set_controller': {
-          if (!ws.roomId || !ws.userId) return;
-          const gameState = rooms.get(ws.roomId);
-          if (!gameState) return;
+          setController(ws, message);
 
-          if (gameState.creatorId !== ws.userId) {
-            ws.send(
-              JSON.stringify({
-                type: 'error',
-                payload: {
-                  message:
-                    'Только создатель комнаты может изменять права на открытие и сброс карт',
-                },
-              }),
-            );
-            return;
-          }
-
-          const { participantId, canControl } = message.payload || {};
-          if (!participantId) return;
-
-          const participantExists = gameState.participants.some(
-            (p) => p.id === participantId,
-          );
-          if (!participantExists) return;
-
-          if (!Array.isArray(gameState.controllers)) {
-            gameState.controllers = [];
-          }
-
-          const index = gameState.controllers.indexOf(participantId);
-          if (canControl) {
-            if (index === -1) {
-              gameState.controllers.push(participantId);
-            }
-          } else if (index !== -1) {
-            gameState.controllers.splice(index, 1);
-          }
-
-          broadcastState(ws.roomId);
           break;
         }
       }
@@ -330,10 +85,12 @@ wss.on('connection', (ws) => {
     try {
       if (ws.roomId && ws.userId) {
         const gameState = rooms.get(ws.roomId);
+
         if (gameState) {
           const participant = gameState.participants.find(
             (p) => p.id === ws.userId,
           );
+
           if (participant) {
             participant.isOnline = false;
           }
@@ -356,6 +113,7 @@ server.listen(PORT, async () => {
 
   try {
     await getDb();
+
     console.log(`MongoDB подключена: ${process.env.MONGODB_URI}`);
   } catch (err) {
     console.error('Ошибка подключения к MongoDB:', err.message);
