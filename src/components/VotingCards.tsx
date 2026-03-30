@@ -1,7 +1,7 @@
-import { VOTE_VALUES } from "../lib";
-import type { VoteValue } from "../types";
-import { Button } from "./ui/button";
-import styles from "./VotingCards.module.scss";
+import { VOTE_VALUES } from '../lib';
+import type { VoteValue } from '../types';
+import { Button } from './ui/button';
+import styles from './VotingCards.module.scss';
 
 interface VotingCardsProps {
   selectedVote: VoteValue | null;
@@ -27,8 +27,8 @@ export const VotingCards = ({
           <button
             key={value}
             className={`${styles.card} ${
-              selectedVote === value ? styles.selected : ""
-            } ${isVotingDisabled ? styles.disabled : ""}`}
+              selectedVote === value ? styles.selected : ''
+            } ${isVotingDisabled ? styles.disabled : ''}`}
             onClick={() => !isVotingDisabled && onSelectVote(value)}
             disabled={isVotingDisabled}
           >
@@ -44,10 +44,10 @@ export const VotingCards = ({
         size="lg"
       >
         {votesRevealed
-          ? "Карты уже открыты"
+          ? 'Карты уже открыты'
           : hasVoted
-          ? "Вы уже проголосовали"
-          : "Проголосовать"}
+            ? 'Вы уже проголосовали'
+            : 'Проголосовать'}
       </Button>
     </div>
   );

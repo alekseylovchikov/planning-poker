@@ -24,20 +24,23 @@
 ## Установка и запуск
 
 1. Установите зависимости:
+
 ```bash
 npm install
 ```
 
 2. Запустите WebSocket сервер (в отдельном терминале):
+
 ```bash
 # Установите ws для примера сервера (если еще не установлен)
 npm install ws
 
 # Запустите пример сервера
-node server-example.js
+node server.js
 ```
 
 3. Запустите dev-сервер клиента:
+
 ```bash
 npm run dev
 ```
@@ -49,6 +52,7 @@ npm run dev
 Приложение ожидает WebSocket сервер на `ws://localhost:8080` по умолчанию.
 
 Вы можете изменить URL через переменную окружения:
+
 ```bash
 VITE_WS_URL=ws://your-server:port npm run dev
 ```
@@ -98,7 +102,7 @@ interface Participant {
   hasVoted: boolean;
 }
 
-type VoteValue = "0.5" | "1" | "2" | "3" | "5" | "8" | "13" | "???";
+type VoteValue = '0.5' | '1' | '2' | '3' | '5' | '8' | '13' | '???';
 ```
 
 ## Структура проекта
