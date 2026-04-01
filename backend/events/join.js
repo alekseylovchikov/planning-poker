@@ -10,6 +10,7 @@ import {
 } from '../roomCreatorsDb.js';
 import { rooms } from '../rooms.js';
 import { wss } from '../wss.js';
+import { logger } from '../utils/logger.js';
 
 export async function join(ws, message) {
   const { name, roomId: requestedRoomId } = message.payload || {};
@@ -43,7 +44,7 @@ export async function join(ws, message) {
   if (!roomId) {
     roomId = generateId();
 
-    console.log(`Создана новая комната: ${roomId}`);
+    logger.info(`Создана новая комната: ${roomId}`);
   }
 
   let gameState = rooms.get(roomId);
@@ -52,11 +53,12 @@ export async function join(ws, message) {
     gameState = createRoom(roomId);
 
     if (requestedRoomId) {
-      // Комната не найдена в памяти — восстанавливаем создателя из БД
-      console.log(
+      logger.info(
         `Комната ${roomId} не найдена в памяти, восстанавливаем из БД.`,
       );
+
       const storedCreatorName = await getRoomCreatorName(roomId);
+
       if (storedCreatorName) {
         gameState.creatorName = storedCreatorName;
       }
@@ -85,13 +87,13 @@ export async function join(ws, message) {
         try {
           client.close();
         } catch (e) {
-          console.error('Error closing old connection:', e);
+          logger.error('Error closing old connection:', e);
         }
       }
     });
 
     if (hadOtherConnection) {
-      console.log(
+      logger.info(
         `Переподключение участника: ${trimmedName} в комнате ${roomId}`,
       );
     }
@@ -116,7 +118,7 @@ export async function join(ws, message) {
       if (gameState.creatorName) {
         if (trimmedName.toLowerCase() === gameState.creatorName.toLowerCase()) {
           gameState.creatorId = participant.id;
-          console.log(
+          logger.info(
             `Создатель комнаты ${roomId} восстановлен: ${trimmedName}`,
           );
         }
@@ -127,7 +129,7 @@ export async function join(ws, message) {
 
         await saveRoomCreator(roomId, trimmedName);
 
-        console.log(
+        logger.info(
           `Пользователь ${trimmedName} стал создателем комнаты ${roomId}`,
         );
       }
@@ -145,7 +147,7 @@ export async function join(ws, message) {
       );
     }
   } catch (e) {
-    console.error('Error sending initial state:', e);
+    logger.error('Error sending initial state:', e);
   }
 
   broadcastState(roomId);

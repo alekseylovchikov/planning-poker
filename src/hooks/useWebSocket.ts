@@ -43,6 +43,9 @@ export const useWebSocket = (url: string) => {
           onNameTakenRef.current();
         }
         break;
+      case "error":
+        setError(message.payload?.message || "Unknown error");
+        break;
       default:
         break;
     }

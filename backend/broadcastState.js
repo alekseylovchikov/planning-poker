@@ -3,6 +3,7 @@ import { WebSocket } from 'ws';
 import { wss } from './wss.js';
 import { rooms } from './rooms.js';
 import { getSafeState } from './getSafeState.js';
+import { logger } from './utils/logger.js';
 
 export function broadcastState(roomId) {
   const roomState = rooms.get(roomId);
@@ -24,7 +25,7 @@ export function broadcastState(roomId) {
         }
       }
     } catch (error) {
-      console.error(`Error broadcasting to client in room ${roomId}:`, error);
+      logger.error(`Error broadcasting to client in room ${roomId}:`, error);
     }
   });
 }

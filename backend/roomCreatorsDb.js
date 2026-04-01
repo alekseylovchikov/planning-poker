@@ -12,7 +12,7 @@ export async function saveRoomCreator(roomId, creatorName) {
         { upsert: true },
       );
   } catch (err) {
-    console.error(`Ошибка сохранения создателя комнаты ${roomId}:`, err);
+    logger.error(`Ошибка сохранения создателя комнаты ${roomId}:`, err);
   }
 }
 
@@ -23,7 +23,7 @@ export async function getRoomCreatorName(roomId) {
 
     return doc?.creatorName ?? null;
   } catch (err) {
-    console.error(`Ошибка получения создателя комнаты ${roomId}:`, err);
+    logger.error(`Ошибка получения создателя комнаты ${roomId}:`, err);
     return null;
   }
 }

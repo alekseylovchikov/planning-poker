@@ -2,6 +2,7 @@ import http from 'http';
 import { readFileSync, existsSync, statSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { logger } from './utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(dirname(__filename)); // project root, not backend/
@@ -53,7 +54,7 @@ export const createdServer = http.createServer((req, res) => {
         res.writeHead(200, { 'Content-Type': contentType });
         res.end(content);
       } catch (err) {
-        console.error('Error serving file:', err);
+        logger.error('Error serving file:', err);
         res.writeHead(500, { 'Content-Type': 'text/plain' });
         res.end('Internal Server Error');
       }
@@ -62,7 +63,7 @@ export const createdServer = http.createServer((req, res) => {
       res.end('Not Found');
     }
   } catch (err) {
-    console.error('Request handling error:', err);
+    logger.error('Request handling error:', err);
     res.writeHead(500, { 'Content-Type': 'text/plain' });
     res.end('Internal Server Error');
   }

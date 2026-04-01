@@ -1,4 +1,5 @@
 import { rooms } from './rooms.js';
+import { logger } from './utils/logger.js';
 
 export function getSafeState(client, roomId) {
   const roomState = rooms.get(roomId);
@@ -41,7 +42,7 @@ export function getSafeState(client, roomId) {
 
     return clientState;
   } catch (error) {
-    console.error(`Error in getSafeState for room ${roomId}:`, error);
+    logger.error(`Error in getSafeState for room ${roomId}:`, error);
     return null;
   }
 }

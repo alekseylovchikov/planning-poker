@@ -3,6 +3,7 @@ import { WebSocket } from 'ws';
 import { rooms } from './rooms.js';
 import { wss } from './wss.js';
 import { broadcastState } from './broadcastState.js';
+import { logger } from './utils/logger.js';
 
 export function updateOnlineStatus() {
   try {
@@ -28,6 +29,6 @@ export function updateOnlineStatus() {
       broadcastState(roomId);
     });
   } catch (error) {
-    console.error('Error in updateOnlineStatus:', error);
+    logger.error('Error in updateOnlineStatus:', error);
   }
 }
