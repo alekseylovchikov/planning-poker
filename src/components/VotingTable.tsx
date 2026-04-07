@@ -1,9 +1,9 @@
-import type { Participant, VoteValue } from '../types';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { truncateName, sanitizeName } from '../lib';
-import styles from './VotingTable.module.scss';
 import { useMemo } from 'react';
+import { sanitizeName, truncateName } from '../lib';
+import type { Participant, VoteValue } from '../types';
+import styles from './VotingTable.module.scss';
+import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 interface VotingTableProps {
   participants: Participant[];
