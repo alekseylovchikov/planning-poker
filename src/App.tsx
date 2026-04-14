@@ -14,6 +14,7 @@ import { useAudio } from './features/audio/usePlayAudio';
 import { MuteButton } from './features/audio/MuteButton';
 
 const WS_URL = getWebSocketUrl();
+type Theme = 'dark' | 'light';
 
 function App() {
   // Санитизируем имя при загрузке из localStorage
@@ -29,6 +30,20 @@ function App() {
     return null;
   });
   const [selectedVote, setSelectedVote] = useState<VoteValue | null>(null);
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === 'undefined') {
+      return 'dark';
+    }
+
+    const storedTheme = localStorage.getItem('theme');
+    if (storedTheme === 'dark' || storedTheme === 'light') {
+      return storedTheme;
+    }
+
+    return window.matchMedia('(prefers-color-scheme: light)').matches
+      ? 'light'
+      : 'dark';
+  });
   const [isJoining, setIsJoining] = useState(false);
   const hasAttemptedJoinRef = useRef(false);
   const [isMuted, setIsMuted] = useState(() => {
@@ -40,6 +55,13 @@ function App() {
     return true;
   });
   const { playAudio } = useAudio();
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   const {
     isConnected,
@@ -254,6 +276,10 @@ function App() {
     });
   };
 
+  const handleThemeToggle = () => {
+    setTheme((prevTheme) => (prevTheme === 'dark' ? 'light' : 'dark'));
+  };
+
   useEffect(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) return;
     const prev = prevVotesRevealedRef.current;
@@ -328,11 +354,60 @@ function App() {
   // Если пользователь не ввел имя, показываем форму ввода
   if (!userName) {
     return (
-      <NameInput
-        onSubmit={handleNameSubmit}
-        error={error}
-        isLoading={isJoining}
-      />
+      <>
+        <NameInput
+          onSubmit={handleNameSubmit}
+          error={error}
+          isLoading={isJoining}
+        />
+        <button
+          type="button"
+          className={styles.themeToggleButton}
+          onClick={handleThemeToggle}
+          aria-label={
+            theme === 'dark' ? 'Включить светлую тему' : 'Включить темную тему'
+          }
+          title={theme === 'dark' ? 'Светлая тема' : 'Темная тема'}
+        >
+          {theme === 'dark' ? (
+            <svg
+              className={styles.themeIcon}
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            >
+              <circle
+                cx="12"
+                cy="12"
+                r="4"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+              <path
+                d="M12 2v2M12 20v2M22 12h-2M4 12H2M19.07 4.93l-1.41 1.41M6.34 17.66l-1.41 1.41M19.07 19.07l-1.41-1.41M6.34 6.34L4.93 4.93"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          ) : (
+            <svg
+              className={styles.themeIcon}
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M21 12.79A9 9 0 1 1 11.21 3c-.05.33-.08.67-.08 1.01a8 8 0 0 0 8 8c.34 0 .68-.03 1.01-.08Z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
+        </button>
+      </>
     );
   }
 
@@ -415,6 +490,54 @@ function App() {
       </div>
 
       <ToastContainer />
+
+      <button
+        type="button"
+        className={styles.themeToggleButton}
+        onClick={handleThemeToggle}
+        aria-label={
+          theme === 'dark' ? 'Включить светлую тему' : 'Включить темную тему'
+        }
+        title={theme === 'dark' ? 'Светлая тема' : 'Темная тема'}
+      >
+        {theme === 'dark' ? (
+          <svg
+            className={styles.themeIcon}
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="4"
+              stroke="currentColor"
+              strokeWidth="2"
+            />
+            <path
+              d="M12 2v2M12 20v2M22 12h-2M4 12H2M19.07 4.93l-1.41 1.41M6.34 17.66l-1.41 1.41M19.07 19.07l-1.41-1.41M6.34 6.34L4.93 4.93"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        ) : (
+          <svg
+            className={styles.themeIcon}
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M21 12.79A9 9 0 1 1 11.21 3c-.05.33-.08.67-.08 1.01a8 8 0 0 0 8 8c.34 0 .68-.03 1.01-.08Z"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        )}
+      </button>
     </div>
   );
 }

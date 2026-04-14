@@ -1,10 +1,11 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  
+  color-scheme: dark;
+
   /* Tailwind CSS v4 theme colors - Dark theme with green/orange accents */
   --color-border: hsl(0 0% 25%);
   --color-input: hsl(0 0% 20%);
@@ -25,12 +26,86 @@
   --color-popover-foreground: hsl(0 0% 98%);
   --color-card: hsl(0 0% 12%);
   --color-card-foreground: hsl(0 0% 98%);
+
+  --page-gradient-start: #0a0a0a;
+  --page-gradient-end: #1a1a1a;
+  --app-bg: #0a0a0a;
+  --surface-bg: #121212;
+  --surface-bg-soft: #1a1a1a;
+  --surface-bg-soft-hover: #1f1f1f;
+  --surface-bg-emphasis: #1a2e1a;
+  --border-strong: #1f1f1f;
+  --border-default: #2a2a2a;
+  --text-primary: #fafafa;
+  --text-secondary: #a3a3a3;
+  --text-muted: #737373;
+  --text-inverse: #0a0a0a;
+  --success: #10b981;
+  --success-hover: #059669;
+  --danger: #ef4444;
+  --status-offline: #9ca3af;
+  --badge-bg: #1d4ed8;
+  --badge-text: #e5e7eb;
+  --control-border: #4b5563;
+  --control-hover-bg: #111827;
+  --control-hover-border: #e5e7eb;
+  --warning: #f97316;
+  --warning-hover: #ea580c;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+
+  --color-border: hsl(220 18% 82%);
+  --color-input: hsl(220 20% 96%);
+  --color-ring: hsl(160 84% 35%);
+  --color-background: hsl(220 33% 97%);
+  --color-foreground: hsl(222 47% 11%);
+  --color-primary: hsl(160 84% 32%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-secondary: hsl(220 26% 93%);
+  --color-secondary-foreground: hsl(222 47% 11%);
+  --color-destructive: hsl(0 72% 51%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+  --color-muted: hsl(220 26% 93%);
+  --color-muted-foreground: hsl(220 9% 40%);
+  --color-accent: hsl(24 95% 47%);
+  --color-accent-foreground: hsl(0 0% 100%);
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(222 47% 11%);
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(222 47% 11%);
+
+  --page-gradient-start: #eef3fb;
+  --page-gradient-end: #dfe8f5;
+  --app-bg: #f5f7fb;
+  --surface-bg: #ffffff;
+  --surface-bg-soft: #f4f6fa;
+  --surface-bg-soft-hover: #e9edf5;
+  --surface-bg-emphasis: #e8f8ef;
+  --border-strong: #c8d1df;
+  --border-default: #d8dee9;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+  --text-inverse: #ffffff;
+  --success: #059669;
+  --success-hover: #047857;
+  --danger: #dc2626;
+  --status-offline: #94a3b8;
+  --badge-bg: #2563eb;
+  --badge-text: #eff6ff;
+  --control-border: #94a3b8;
+  --control-hover-bg: #e2e8f0;
+  --control-hover-border: #334155;
+  --warning: #ea580c;
+  --warning-hover: #c2410c;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: hsl(0 0% 9%);
-  color: hsl(0 0% 98%);
+  background-color: var(--color-background);
+  color: var(--color-foreground);
 }

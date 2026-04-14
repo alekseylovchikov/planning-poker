@@ -15,18 +15,18 @@
   flex-direction: column;
   padding: 0.45rem 0.75rem;
   border-radius: 0.5rem;
-  background: #1a1a1a;
+  background: var(--surface-bg-soft);
   transition: background 0.2s;
-  border: 1px solid #2a2a2a;
+  border: 1px solid var(--border-default);
   gap: 0.5rem;
 
   &:hover {
-    background: #1f1f1f;
+    background: var(--surface-bg-soft-hover);
   }
 
   &.current {
-    background: #1a2e1a;
-    border: 1px solid #10b981;
+    background: var(--surface-bg-emphasis);
+    border: 1px solid var(--success);
   }
 }
 
@@ -38,7 +38,7 @@
 
 .name {
   font-weight: 500;
-  color: #fafafa;
+  color: var(--text-primary);
   word-break: break-word;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -48,7 +48,7 @@
 
 .you {
   font-size: 0.875rem;
-  color: #a3a3a3;
+  color: var(--text-secondary);
 }
 
 .status {
@@ -61,8 +61,8 @@
   font-size: 0.75rem;
   padding: 0.1rem 0.4rem;
   border-radius: 9999px;
-  background: #1d4ed8;
-  color: #e5e7eb;
+  background: var(--badge-bg);
+  color: var(--badge-text);
 }
 
 .indicator {
@@ -71,26 +71,26 @@
   border-radius: 50%;
 
   &.online {
-    background: #10b981;
+    background: var(--success);
   }
 
   &.offline {
-    background: #9ca3af;
+    background: var(--status-offline);
   }
 }
 
 .statusText {
   font-size: 0.875rem;
-  color: #a3a3a3;
+  color: var(--text-secondary);
 }
 
 .controllerToggleButton {
   font-size: 0.75rem;
   padding: 0.2rem 0.6rem;
   border-radius: 9999px;
-  border: 1px solid #4b5563;
+  border: 1px solid var(--control-border);
   background: transparent;
-  color: #e5e7eb;
+  color: var(--text-primary);
   cursor: pointer;
   transition:
     background 0.2s,
@@ -98,13 +98,13 @@
     color 0.2s;
 
   &:hover {
-    background: #111827;
-    border-color: #e5e7eb;
+    background: var(--control-hover-bg);
+    border-color: var(--control-hover-border);
   }
 }
 
 .empty {
   text-align: center;
-  color: #737373;
+  color: var(--text-muted);
   padding: 2rem 0;
 }

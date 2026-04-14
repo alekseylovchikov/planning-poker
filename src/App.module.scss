@@ -1,13 +1,13 @@
 .app {
   min-height: 100vh;
-  background: #0a0a0a;
+  background: var(--app-bg);
   display: flex;
   flex-direction: column;
 }
 
 .header {
-  background: #121212;
-  border-bottom: 1px solid #1f1f1f;
+  background: var(--surface-bg);
+  border-bottom: 1px solid var(--border-strong);
   padding: 0.5rem 2rem;
   display: flex;
   justify-content: space-between;
@@ -18,9 +18,13 @@
 .title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #fafafa;
+  color: var(--text-primary);
   margin: 0;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(
+    135deg,
+    var(--success) 0%,
+    var(--success-hover) 100%
+  );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -31,13 +35,13 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: #a3a3a3;
+  color: var(--text-secondary);
   flex-wrap: wrap;
 }
 
 .createNewRoomLink {
-  background-color: #059669;
-  color: #fff;
+  background-color: var(--success-hover);
+  color: var(--text-inverse);
   border-radius: 3px;
   padding: 2px 6px;
 }
@@ -48,11 +52,11 @@
   border-radius: 50%;
 
   &.connected {
-    background: #10b981;
+    background: var(--success);
   }
 
   &.disconnected {
-    background: #ef4444;
+    background: var(--danger);
     animation: pulse 2s infinite;
   }
 }
@@ -141,5 +145,52 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: #a3a3a3;
+  color: var(--text-secondary);
+}
+
+.themeToggleButton {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1000;
+  border: 1px solid var(--border-default);
+  background: var(--surface-bg);
+  color: var(--text-primary);
+  border-radius: 999px;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  transition:
+    transform 0.2s,
+    background 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s;
+
+  &:hover {
+    transform: translateY(-2px);
+    background: var(--surface-bg-soft);
+    border-color: var(--success);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.themeIcon {
+  width: 1.2rem;
+  height: 1.2rem;
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .themeToggleButton {
+    right: 0.75rem;
+    bottom: 0.75rem;
+    padding: 0.45rem 0.8rem;
+  }
 }

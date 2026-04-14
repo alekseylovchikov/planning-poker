@@ -12,29 +12,29 @@
 
 .card {
   aspect-ratio: 1;
-  border: 2px solid #2a2a2a;
+  border: 2px solid var(--border-default);
   border-radius: 0.75rem;
-  background: #121212;
+  background: var(--surface-bg);
   font-size: 1.5rem;
   font-weight: 600;
-  color: #fafafa;
+  color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s;
-  
+
   &:hover:not(.disabled) {
-    border-color: #10b981;
+    border-color: var(--success);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
   }
-  
+
   &.selected {
-    border-color: #10b981;
-    background: #10b981;
-    color: #0a0a0a;
+    border-color: var(--success);
+    background: var(--success);
+    color: var(--text-inverse);
     transform: scale(1.05);
     box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
   }
-  
+
   &.disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -43,26 +43,25 @@
 
 .voteButton {
   width: 100%;
-  background: #10b981;
-  color: #0a0a0a;
+  background: var(--success);
+  color: var(--text-inverse);
   font-size: 1.125rem;
   padding: 1rem;
   cursor: pointer;
   transition: background 0.2s;
-  
+
   &:hover:not(:disabled) {
-    background: #059669;
+    background: var(--success-hover);
     transform: translateY(-1px);
     box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
   }
-  
+
   &:active:not(:disabled) {
     transform: translateY(0);
   }
-  
+
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
 }
-
