@@ -4,10 +4,15 @@ import { addTask as addTaskToDb } from '../tasksDb.js';
 import { generateId } from '../generateId.js';
 
 export async function addTask(ws, message) {
-  if (!ws.roomId || !ws.userId) return;
+  // Security: Validate session token for authorization
+  if (!ws.roomId || !ws.userId || !ws.sessionToken) return;
 
   const gameState = rooms.get(ws.roomId);
   if (!gameState) return;
+
+  // Verify session token matches stored token
+  const participant = gameState.participants.find((p) => p.id === ws.userId);
+  if (!participant || participant.sessionToken !== ws.sessionToken) return;
 
   if (gameState.creatorId !== ws.userId) {
     ws.send(

@@ -2,18 +2,22 @@ import { broadcastState } from '../broadcastState.js';
 import { rooms } from '../rooms.js';
 
 export function reveal(ws) {
-  if (!ws.roomId || !ws.userId) return;
+  // Security: Validate session token for authorization
+  if (!ws.roomId || !ws.userId || !ws.sessionToken) return;
 
   const gameState = rooms.get(ws.roomId);
 
   if (!gameState) return;
 
+  // Verify session token matches stored token
+  const participant = gameState.participants.find((p) => p.id === ws.userId);
+  if (!participant || participant.sessionToken !== ws.sessionToken) return;
+
   const controllers = Array.isArray(gameState.controllers)
     ? gameState.controllers
     : [];
   const canControl =
-    gameState.creatorId === ws.userId ||
-    controllers.includes(ws.userId);
+    gameState.creatorId === ws.userId || controllers.includes(ws.userId);
 
   if (!canControl) {
     ws.send(

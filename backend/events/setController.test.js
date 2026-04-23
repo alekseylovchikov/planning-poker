@@ -1,23 +1,29 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { rooms } from "../rooms.js";
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { rooms } from '../rooms.js';
 
-vi.mock("../broadcastState.js", () => ({
+vi.mock('../broadcastState.js', () => ({
   broadcastState: vi.fn(),
 }));
 
-import { setController } from "./setController.js";
-import { broadcastState } from "../broadcastState.js";
+import { setController } from './setController.js';
+import { broadcastState } from '../broadcastState.js';
 
-function makeWs(roomId, userId) {
-  return { roomId, userId, send: vi.fn() };
+function makeWs(roomId, userId, sessionToken) {
+  // Determine default sessionToken based on userId if not provided
+  const defaultTokens = {
+    'creator1': 'token123',
+    'u2': 'token456',
+    'u3': 'token789',
+  };
+  return { roomId, userId, sessionToken: sessionToken || defaultTokens[userId] || 'token123', send: vi.fn() };
 }
 
 function seedRoom(roomId, creatorId) {
   const state = {
     participants: [
-      { id: creatorId, name: "Creator" },
-      { id: "u2", name: "Bob" },
-      { id: "u3", name: "Charlie" },
+      { id: creatorId, name: 'Creator', sessionToken: 'token123' },
+      { id: 'u2', name: 'Bob', sessionToken: 'token456' },
+      { id: 'u3', name: 'Charlie', sessionToken: 'token789' },
     ],
     votesRevealed: false,
     currentVotes: {},
@@ -29,88 +35,96 @@ function seedRoom(roomId, creatorId) {
   return state;
 }
 
-describe("setController", () => {
+describe('setController', () => {
   beforeEach(() => {
     rooms.clear();
   });
 
-  it("создатель добавляет контролёра", () => {
-    seedRoom("r1", "creator1");
-    const ws = makeWs("r1", "creator1");
+  it('создатель добавляет контролёра', () => {
+    seedRoom('r1', 'creator1');
+    const ws = makeWs('r1', 'creator1');
 
-    setController(ws, { payload: { participantId: "u2", canControl: true } });
+    setController(ws, { payload: { participantId: 'u2', canControl: true } });
 
-    expect(rooms.get("r1").controllers).toContain("u2");
-    expect(broadcastState).toHaveBeenCalledWith("r1");
+    expect(rooms.get('r1').controllers).toContain('u2');
+    expect(broadcastState).toHaveBeenCalledWith('r1');
   });
 
-  it("создатель убирает контролёра", () => {
-    seedRoom("r1", "creator1");
-    rooms.get("r1").controllers = ["u2"];
-    const ws = makeWs("r1", "creator1");
+  it('создатель убирает контролёра', () => {
+    seedRoom('r1', 'creator1');
+    rooms.get('r1').controllers = ['u2'];
+    const ws = makeWs('r1', 'creator1');
 
-    setController(ws, { payload: { participantId: "u2", canControl: false } });
+    setController(ws, { payload: { participantId: 'u2', canControl: false } });
 
-    expect(rooms.get("r1").controllers).not.toContain("u2");
-    expect(broadcastState).toHaveBeenCalledWith("r1");
+    expect(rooms.get('r1').controllers).not.toContain('u2');
+    expect(broadcastState).toHaveBeenCalledWith('r1');
   });
 
-  it("не добавляет дубли при повторном назначении", () => {
-    seedRoom("r1", "creator1");
-    rooms.get("r1").controllers = ["u2"];
-    const ws = makeWs("r1", "creator1");
+  it('не добавляет дубли при повторном назначении', () => {
+    seedRoom('r1', 'creator1');
+    rooms.get('r1').controllers = ['u2'];
+    const ws = makeWs('r1', 'creator1');
 
-    setController(ws, { payload: { participantId: "u2", canControl: true } });
+    setController(ws, { payload: { participantId: 'u2', canControl: true } });
 
-    expect(rooms.get("r1").controllers.filter((c) => c === "u2")).toHaveLength(1);
+    expect(rooms.get('r1').controllers.filter((c) => c === 'u2')).toHaveLength(
+      1,
+    );
   });
 
-  it("не-создатель получает ошибку", () => {
-    seedRoom("r1", "creator1");
-    const ws = makeWs("r1", "u2");
+  it('не-создатель получает ошибку', () => {
+    seedRoom('r1', 'creator1');
+    const ws = makeWs('r1', 'u2');
 
-    setController(ws, { payload: { participantId: "u3", canControl: true } });
+    setController(ws, { payload: { participantId: 'u3', canControl: true } });
 
     expect(broadcastState).not.toHaveBeenCalled();
 
     const sent = JSON.parse(ws.send.mock.calls[0][0]);
-    expect(sent.type).toBe("error");
-    expect(sent.payload.message).toContain("создатель комнаты");
+    expect(sent.type).toBe('error');
+    expect(sent.payload.message).toContain('создатель комнаты');
   });
 
-  it("игнорирует несуществующего участника", () => {
-    seedRoom("r1", "creator1");
-    const ws = makeWs("r1", "creator1");
+  it('игнорирует несуществующего участника', () => {
+    seedRoom('r1', 'creator1');
+    const ws = makeWs('r1', 'creator1');
 
-    setController(ws, { payload: { participantId: "ghost", canControl: true } });
+    setController(ws, {
+      payload: { participantId: 'ghost', canControl: true },
+    });
 
-    expect(rooms.get("r1").controllers).toHaveLength(0);
+    expect(rooms.get('r1').controllers).toHaveLength(0);
     expect(broadcastState).not.toHaveBeenCalled();
   });
 
-  it("игнорирует, если participantId отсутствует", () => {
-    seedRoom("r1", "creator1");
-    const ws = makeWs("r1", "creator1");
+  it('игнорирует, если participantId отсутствует', () => {
+    seedRoom('r1', 'creator1');
+    const ws = makeWs('r1', 'creator1');
 
     setController(ws, { payload: { canControl: true } });
 
     expect(broadcastState).not.toHaveBeenCalled();
   });
 
-  it("игнорирует, если roomId или userId отсутствуют", () => {
-    setController(makeWs(null, "u1"), { payload: { participantId: "u2", canControl: true } });
-    setController(makeWs("r1", null), { payload: { participantId: "u2", canControl: true } });
+  it('игнорирует, если roomId или userId отсутствуют', () => {
+    setController(makeWs(null, 'u1'), {
+      payload: { participantId: 'u2', canControl: true },
+    });
+    setController(makeWs('r1', null), {
+      payload: { participantId: 'u2', canControl: true },
+    });
 
     expect(broadcastState).not.toHaveBeenCalled();
   });
 
-  it("инициализирует controllers как массив, если undefined", () => {
-    seedRoom("r1", "creator1");
-    rooms.get("r1").controllers = undefined;
-    const ws = makeWs("r1", "creator1");
+  it('инициализирует controllers как массив, если undefined', () => {
+    seedRoom('r1', 'creator1');
+    rooms.get('r1').controllers = undefined;
+    const ws = makeWs('r1', 'creator1');
 
-    setController(ws, { payload: { participantId: "u2", canControl: true } });
+    setController(ws, { payload: { participantId: 'u2', canControl: true } });
 
-    expect(rooms.get("r1").controllers).toEqual(["u2"]);
+    expect(rooms.get('r1').controllers).toEqual(['u2']);
   });
 });

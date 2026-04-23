@@ -2,24 +2,21 @@ import isEmpty from 'lodash/isEmpty.js';
 
 import { broadcastState } from '../broadcastState.js';
 import { createRoom } from '../createRoom.js';
-import { generateId } from '../generateId.js';
+import { generateId, generateSessionToken } from '../generateId.js';
 import { getSafeState } from '../getSafeState.js';
-import {
-  getRoomCreatorName,
-  saveRoomCreator,
-} from '../roomCreatorsDb.js';
+import { getRoomCreatorName, saveRoomCreator } from '../roomCreatorsDb.js';
 import { getTasksByRoom } from '../tasksDb.js';
 import { rooms } from '../rooms.js';
 import { wss } from '../wss.js';
 import { logger } from '../utils/logger.js';
 
 export async function join(ws, message) {
-  const { name, roomId: requestedRoomId } = message.payload || {};
+  const { name, roomId: requestedRoomId, sessionToken } = message.payload || {};
 
   if (
     requestedRoomId &&
     typeof requestedRoomId === 'string' &&
-    requestedRoomId.length > 7
+    requestedRoomId.length > 8
   ) {
     ws.send(
       JSON.stringify({
@@ -73,72 +70,90 @@ export async function join(ws, message) {
           name: t.name,
           url: t.url,
           description: t.description || '',
-          createdAt: t.createdAt ? t.createdAt.toISOString() : new Date().toISOString(),
+          createdAt: t.createdAt
+            ? t.createdAt.toISOString()
+            : new Date().toISOString(),
         }));
       }
     }
   }
 
   ws.roomId = roomId;
-
   const trimmedName = name.trim();
 
-  const existingParticipant = gameState.participants.find(
-    (p) => p.name.toLowerCase() === trimmedName.toLowerCase(),
-  );
+  // Security: Check if user is reconnecting with a valid session token
+  let participantId = null;
+  let newToken = null;
 
-  if (existingParticipant) {
-    let hadOtherConnection = false;
+  if (sessionToken && typeof sessionToken === 'string') {
+    // Try to find existing participant with this token
+    const existingParticipant = gameState.participants.find(
+      (p) => p.sessionToken === sessionToken,
+    );
 
-    wss.clients.forEach((client) => {
-      if (
-        client !== ws &&
-        client.userId === existingParticipant.id &&
-        client.roomId === roomId
-      ) {
-        hadOtherConnection = true;
+    if (existingParticipant) {
+      // Valid reconnection - reuse existing participant
+      participantId = existingParticipant.id;
+      newToken = sessionToken;
 
-        try {
-          client.close();
-        } catch (e) {
-          logger.error('Error closing old connection:', e);
+      // Close old connection if exists
+      let hadOtherConnection = false;
+
+      wss.clients.forEach((client) => {
+        if (
+          client !== ws &&
+          client.userId === participantId &&
+          client.roomId === roomId
+        ) {
+          hadOtherConnection = true;
+
+          try {
+            client.close();
+          } catch (e) {
+            logger.error('Error closing old connection:', e);
+          }
         }
+      });
+
+      if (hadOtherConnection) {
+        logger.info(
+          `Переподключение участника: ${trimmedName} в комнате ${roomId}`,
+        );
       }
-    });
 
-    if (hadOtherConnection) {
-      logger.info(
-        `Переподключение участника: ${trimmedName} в комнате ${roomId}`,
-      );
+      existingParticipant.isOnline = true;
     }
+  }
 
-    existingParticipant.isOnline = true;
-    ws.userId = existingParticipant.id;
-    broadcastState(roomId);
-  } else {
+  // If no valid reconnection, create a new participant
+  if (!participantId) {
+    const newId = generateId();
+    newToken = generateSessionToken();
+
     const participant = {
-      id: generateId(),
+      id: newId,
       name: trimmedName,
+      sessionToken: newToken, // Security: Cryptographic token for session auth
       isOnline: true,
       vote: undefined,
       hasVoted: false,
     };
 
-    ws.userId = participant.id;
+    participantId = newId;
     gameState.participants.push(participant);
 
     if (!gameState.creatorId) {
-      // Если в БД есть сохранённый создатель — назначаем только если имя совпадает
+      // If stored creator name exists and matches - assign creator to them
       if (gameState.creatorName) {
         if (trimmedName.toLowerCase() === gameState.creatorName.toLowerCase()) {
-          gameState.creatorId = participant.id;
+          gameState.creatorId = participantId;
           logger.info(
             `Создатель комнаты ${roomId} восстановлен: ${trimmedName}`,
           );
         }
       } else {
-        // Новая комната — первый участник становится создателем и сохраняется в БД
-        gameState.creatorId = participant.id;
+        // New room - first participant becomes creator
+        gameState.creatorId = participantId;
         gameState.creatorName = trimmedName;
 
         await saveRoomCreator(roomId, trimmedName);
@@ -150,13 +165,22 @@ export async function join(ws, message) {
     }
   }
 
+  // Set WebSocket connection properties
+  ws.userId = participantId;
+  ws.sessionToken = newToken;
+
   try {
     const safeState = getSafeState(ws, roomId);
+
     if (safeState) {
+      // Send state with session token so client can store it
       ws.send(
         JSON.stringify({
           type: 'state',
-          payload: safeState,
+          payload: {
+            ...safeState,
+            sessionToken: newToken, // Send token to client for storage
+          },
         }),
       );
     }

@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { sanitizeName } from "../lib";
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { sanitizeName } from '../lib';
 
 interface UseAutoJoinOptions {
   isConnected: boolean;
@@ -14,7 +14,7 @@ export function useAutoJoin({
   setOnNameTaken,
   roomId,
 }: UseAutoJoinOptions) {
-  const storedName = localStorage.getItem("userName");
+  const storedName = localStorage.getItem('userName');
   const [userName, setUserName] = useState<string | null>(
     storedName ? sanitizeName(storedName) : null,
   );
@@ -24,7 +24,9 @@ export function useAutoJoin({
   useEffect(() => {
     setOnNameTaken(() => {
       setUserName(null);
-      localStorage.removeItem("userName");
+      localStorage.removeItem('userName');
+      // Security: Clear session token on name conflict
+      sessionStorage.removeItem('sessionToken');
       setIsJoining(false);
       hasAttemptedJoinRef.current = false;
     });
@@ -51,7 +53,7 @@ export function useAutoJoin({
     (name: string) => {
       const sanitized = sanitizeName(name);
       setUserName(sanitized);
-      localStorage.setItem("userName", sanitized);
+      localStorage.setItem('userName', sanitized);
       setIsJoining(true);
       if (isConnected) {
         join(sanitized, roomId || undefined);

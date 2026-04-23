@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import type { GameState, VoteValue, WebSocketMessage } from "../types";
+import { useEffect, useRef, useState, useCallback } from 'react';
+import type { GameState, VoteValue, WebSocketMessage } from '../types';
 
 const RECONNECT_DELAY_MS = 3000;
 /** Минимальное время скрытия вкладки (мс), после которого при показе делаем переподключение */
@@ -22,9 +22,17 @@ export const useWebSocket = (url: string) => {
 
   const handleMessage = useCallback((message: WebSocketMessage) => {
     switch (message.type) {
-      case "state":
+      case 'state':
         if (message.payload) {
-          const state = message.payload as GameState;
+          const state = message.payload as GameState & {
+            sessionToken?: string;
+          };
+
+          // Security: Store session token for reconnection
+          if (state.sessionToken) {
+            sessionStorage.setItem('sessionToken', state.sessionToken);
+          }
+
           // Создаем новый объект для гарантии обновления React
           setGameState({
             roomId: state.roomId,
@@ -38,14 +46,14 @@ export const useWebSocket = (url: string) => {
           setError(null);
         }
         break;
-      case "name_taken":
-        setError("Это имя уже занято");
+      case 'name_taken':
+        setError('Это имя уже занято');
         if (onNameTakenRef.current) {
           onNameTakenRef.current();
         }
         break;
-      case "error":
-        setError(message.payload?.message || "Unknown error");
+      case 'error':
+        setError(message.payload?.message || 'Unknown error');
         break;
       default:
         break;
@@ -60,7 +68,7 @@ export const useWebSocket = (url: string) => {
       ws.onopen = () => {
         setIsConnected(true);
         setError(null);
-        console.log("WebSocket connected");
+        console.log('WebSocket connected');
       };
 
       ws.onmessage = (event) => {
@@ -68,18 +76,18 @@ export const useWebSocket = (url: string) => {
           const message: WebSocketMessage = JSON.parse(event.data);
           handleMessage(message);
         } catch (err) {
-          console.error("Error parsing message:", err);
+          console.error('Error parsing message:', err);
         }
       };
 
       ws.onerror = (err) => {
-        console.error("WebSocket error:", err);
-        setError("Connection error");
+        console.error('WebSocket error:', err);
+        setError('Connection error');
       };
 
       ws.onclose = () => {
         setIsConnected(false);
-        console.log("WebSocket disconnected");
+        console.log('WebSocket disconnected');
         if (reconnectOnVisibleRef.current) {
           reconnectOnVisibleRef.current = false;
           // Небольшая задержка: сервер должен успеть обработать закрытие
@@ -96,8 +104,8 @@ export const useWebSocket = (url: string) => {
         }
       };
     } catch (err) {
-      setError("Failed to connect");
-      console.error("WebSocket connection error:", err);
+      setError('Failed to connect');
+      console.error('WebSocket connection error:', err);
     }
   }, [url, handleMessage]);
 
@@ -114,34 +122,39 @@ export const useWebSocket = (url: string) => {
 
   const join = useCallback(
     (name: string, roomId?: string) => {
-      sendMessage({ type: "join", payload: { name, roomId } });
+      // Security: Send session token if available for reconnection
+      const sessionToken = sessionStorage.getItem('sessionToken');
+      sendMessage({
+        type: 'join',
+        payload: { name, roomId, sessionToken: sessionToken || undefined },
+      });
     },
-    [sendMessage]
+    [sendMessage],
   );
 
   const vote = useCallback(
     (voteValue: VoteValue) => {
-      sendMessage({ type: "vote", payload: { vote: voteValue } });
+      sendMessage({ type: 'vote', payload: { vote: voteValue } });
     },
-    [sendMessage]
+    [sendMessage],
   );
 
   const reset = useCallback(() => {
-    sendMessage({ type: "reset" });
+    sendMessage({ type: 'reset' });
   }, [sendMessage]);
 
   const reveal = useCallback(() => {
-    sendMessage({ type: "reveal" });
+    sendMessage({ type: 'reveal' });
   }, [sendMessage]);
 
   const setParticipantCanControl = useCallback(
     (participantId: string, canControl: boolean) => {
       sendMessage({
-        type: "set_controller",
+        type: 'set_controller',
         payload: { participantId, canControl },
       });
     },
-    [sendMessage]
+    [sendMessage],
   );
 
   useEffect(() => {
@@ -164,7 +177,7 @@ export const useWebSocket = (url: string) => {
   // При уходе на другую вкладку запоминаем время; при возврате переподключаемся если нужно
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.visibilityState === "hidden") {
+      if (document.visibilityState === 'hidden') {
         hiddenSinceRef.current = Date.now();
         return;
       }
@@ -174,7 +187,11 @@ export const useWebSocket = (url: string) => {
 
       // Если WS уже отключён пока вкладка была скрыта (браузер throttle-ит таймеры),
       // отменяем throttled таймаут и переподключаемся немедленно
-      if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+      if (
+        !ws ||
+        ws.readyState === WebSocket.CLOSED ||
+        ws.readyState === WebSocket.CLOSING
+      ) {
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
           reconnectTimeoutRef.current = null;
@@ -193,29 +210,33 @@ export const useWebSocket = (url: string) => {
       reconnectOnVisibleRef.current = true;
       ws.close();
     };
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () =>
+      document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
   const addTask = useCallback(
     (name: string, url: string, description?: string) => {
-      sendMessage({ type: "add_task", payload: { name, url, description } });
+      sendMessage({ type: 'add_task', payload: { name, url, description } });
     },
-    [sendMessage]
+    [sendMessage],
   );
 
   const removeTask = useCallback(
     (taskId: string) => {
-      sendMessage({ type: "remove_task", payload: { taskId } });
+      sendMessage({ type: 'remove_task', payload: { taskId } });
     },
-    [sendMessage]
+    [sendMessage],
   );
 
   const updateTask = useCallback(
-    (taskId: string, updates: { name?: string; url?: string; description?: string }) => {
-      sendMessage({ type: "update_task", payload: { taskId, ...updates } });
+    (
+      taskId: string,
+      updates: { name?: string; url?: string; description?: string },
+    ) => {
+      sendMessage({ type: 'update_task', payload: { taskId, ...updates } });
     },
-    [sendMessage]
+    [sendMessage],
   );
 
   const setOnNameTaken = useCallback((callback: () => void) => {
