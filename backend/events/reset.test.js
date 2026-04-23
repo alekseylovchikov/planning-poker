@@ -11,11 +11,16 @@ import { broadcastState } from '../broadcastState.js';
 function makeWs(roomId, userId, sessionToken) {
   // Determine default sessionToken based on userId if not provided
   const defaultTokens = {
-    'u1': 'token123',
-    'u2': 'token456',
-    'ctrl1': 'token800',
+    u1: 'token123',
+    u2: 'token456',
+    ctrl1: 'token800',
   };
-  return { roomId, userId, sessionToken: sessionToken || defaultTokens[userId] || 'token123', send: vi.fn() };
+  return {
+    roomId,
+    userId,
+    sessionToken: sessionToken || defaultTokens[userId] || 'token123',
+    send: vi.fn(),
+  };
 }
 
 function seedRoom(roomId, creatorId, controllers = []) {
@@ -35,10 +40,10 @@ function seedRoom(roomId, creatorId, controllers = []) {
       sessionToken: 'token456',
     },
   ];
-  
+
   // Add controllers as participants if they're not already
   controllers.forEach((ctrlId, idx) => {
-    if (!participants.find(p => p.id === ctrlId)) {
+    if (!participants.find((p) => p.id === ctrlId)) {
       participants.push({
         id: ctrlId,
         name: `Controller${idx + 1}`,

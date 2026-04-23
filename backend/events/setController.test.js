@@ -11,11 +11,16 @@ import { broadcastState } from '../broadcastState.js';
 function makeWs(roomId, userId, sessionToken) {
   // Determine default sessionToken based on userId if not provided
   const defaultTokens = {
-    'creator1': 'token123',
-    'u2': 'token456',
-    'u3': 'token789',
+    creator1: 'token123',
+    u2: 'token456',
+    u3: 'token789',
   };
-  return { roomId, userId, sessionToken: sessionToken || defaultTokens[userId] || 'token123', send: vi.fn() };
+  return {
+    roomId,
+    userId,
+    sessionToken: sessionToken || defaultTokens[userId] || 'token123',
+    send: vi.fn(),
+  };
 }
 
 function seedRoom(roomId, creatorId) {
