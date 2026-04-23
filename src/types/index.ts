@@ -14,6 +14,7 @@ export interface Task {
   name: string;
   url: string;
   description?: string;
+  createdAt?: string;
 }
 
 export interface GameState {

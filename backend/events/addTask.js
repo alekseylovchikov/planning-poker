@@ -46,6 +46,7 @@ export async function addTask(ws, message) {
     name: name.trim(),
     url: url.trim(),
     description: (description || '').trim(),
+    createdAt: new Date().toISOString(),
   };
 
   await addTaskToDb(ws.roomId, task);

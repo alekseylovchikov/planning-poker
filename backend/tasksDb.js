@@ -8,7 +8,7 @@ export async function getTasksByRoom(roomId) {
     return await db
       .collection('room_tasks')
       .find({ roomId })
-      .sort({ createdAt: 1 })
+      .sort({ createdAt: -1 })
       .toArray();
   } catch (err) {
     logger.error(`Ошибка получения задач комнаты ${roomId}:`, err);

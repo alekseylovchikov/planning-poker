@@ -16,7 +16,10 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-secondary) var(--surface-bg);
 }
 
 .item {
@@ -92,7 +95,9 @@
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
   padding: 0;
 
   &:hover {

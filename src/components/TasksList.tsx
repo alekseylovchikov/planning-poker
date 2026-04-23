@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { z } from "zod";
 import type { Task } from "../types";
 import { Button } from "./ui/button";
@@ -138,6 +138,15 @@ export function TasksList({
     closeEditModal();
   };
 
+  const sortedTasks = useMemo(
+    () =>
+      [...tasks].sort((a, b) => {
+        if (!a.createdAt || !b.createdAt) return 0;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }),
+    [tasks],
+  );
+
   return (
     <div className={styles.container}>
       {tasks.length === 0 && (
@@ -145,7 +154,7 @@ export function TasksList({
       )}
 
       <ul className={styles.list}>
-        {tasks.map((task) => (
+        {sortedTasks.map((task) => (
           <li key={task.taskId} className={styles.item}>
             <div className={styles.taskRow}>
               <div className={styles.taskInfo}>

@@ -73,6 +73,7 @@ export async function join(ws, message) {
           name: t.name,
           url: t.url,
           description: t.description || '',
+          createdAt: t.createdAt ? t.createdAt.toISOString() : new Date().toISOString(),
         }));
       }
     }
