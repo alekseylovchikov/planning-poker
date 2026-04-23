@@ -8,6 +8,7 @@ import {
   getRoomCreatorName,
   saveRoomCreator,
 } from '../roomCreatorsDb.js';
+import { getTasksByRoom } from '../tasksDb.js';
 import { rooms } from '../rooms.js';
 import { wss } from '../wss.js';
 import { logger } from '../utils/logger.js';
@@ -57,10 +58,22 @@ export async function join(ws, message) {
         `Комната ${roomId} не найдена в памяти, восстанавливаем из БД.`,
       );
 
-      const storedCreatorName = await getRoomCreatorName(roomId);
+      const [storedCreatorName, storedTasks] = await Promise.all([
+        getRoomCreatorName(roomId),
+        getTasksByRoom(roomId),
+      ]);
 
       if (storedCreatorName) {
         gameState.creatorName = storedCreatorName;
+      }
+
+      if (storedTasks.length > 0) {
+        gameState.tasks = storedTasks.map((t) => ({
+          taskId: t.taskId,
+          name: t.name,
+          url: t.url,
+          description: t.description || '',
+        }));
       }
     }
   }

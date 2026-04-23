@@ -9,13 +9,21 @@ export interface Participant {
   canControlVotes?: boolean;
 }
 
+export interface Task {
+  taskId: string;
+  name: string;
+  url: string;
+  description?: string;
+}
+
 export interface GameState {
   roomId?: string;
   participants: Participant[];
   votesRevealed: boolean;
   currentVotes: Record<string, VoteValue>;
   isCreator?: boolean;
-   canControlVotes?: boolean;
+  canControlVotes?: boolean;
+  tasks?: Task[];
 }
 
 export interface WebSocketMessage {
@@ -28,6 +36,9 @@ export interface WebSocketMessage {
     | "state"
     | "name_taken"
     | "set_controller"
+    | "add_task"
+    | "remove_task"
+    | "update_task"
     | "error";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payload?: any;

@@ -9,6 +9,7 @@ import { sanitizeName, getWebSocketUrl } from './lib';
 import type { VoteValue } from './types';
 import styles from './App.module.scss';
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
+import { TasksList } from './components/TasksList';
 import { ToastContainer, toast } from 'react-toastify';
 import { useAudio } from './features/audio/usePlayAudio';
 import { MuteButton } from './features/audio/MuteButton';
@@ -73,6 +74,9 @@ function App() {
     reveal,
     setOnNameTaken,
     setParticipantCanControl,
+    addTask,
+    removeTask,
+    updateTask,
   } = useWebSocket(WS_URL);
 
   // Обновляем URL когда получаем roomId от сервера
@@ -464,6 +468,7 @@ function App() {
             <CardHeader>
               <CardTitle>Оценки</CardTitle>
             </CardHeader>
+
             <CardContent>
               <div className={styles.votingSection}>
                 <VotingCards
@@ -474,6 +479,21 @@ function App() {
                   votesRevealed={gameState.votesRevealed}
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Задачи</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TasksList
+                tasks={gameState.tasks || []}
+                isCreator={gameState.isCreator || false}
+                onAddTask={addTask}
+                onRemoveTask={removeTask}
+                onUpdateTask={updateTask}
+              />
             </CardContent>
           </Card>
 

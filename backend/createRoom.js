@@ -9,6 +9,7 @@ export function createRoom(roomId, creatorId = null) {
       roomId: roomId,
       creatorId: creatorId,
       controllers: [],
+      tasks: [],
     });
   }
   return rooms.get(roomId);

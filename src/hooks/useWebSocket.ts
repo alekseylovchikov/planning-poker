@@ -33,6 +33,7 @@ export const useWebSocket = (url: string) => {
             currentVotes: { ...(state.currentVotes || {}) },
             isCreator: state.isCreator || false,
             canControlVotes: state.canControlVotes || false,
+            tasks: [...(state.tasks || [])],
           });
           setError(null);
         }
@@ -196,6 +197,27 @@ export const useWebSocket = (url: string) => {
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, []);
 
+  const addTask = useCallback(
+    (name: string, url: string, description?: string) => {
+      sendMessage({ type: "add_task", payload: { name, url, description } });
+    },
+    [sendMessage]
+  );
+
+  const removeTask = useCallback(
+    (taskId: string) => {
+      sendMessage({ type: "remove_task", payload: { taskId } });
+    },
+    [sendMessage]
+  );
+
+  const updateTask = useCallback(
+    (taskId: string, updates: { name?: string; url?: string; description?: string }) => {
+      sendMessage({ type: "update_task", payload: { taskId, ...updates } });
+    },
+    [sendMessage]
+  );
+
   const setOnNameTaken = useCallback((callback: () => void) => {
     onNameTakenRef.current = callback;
   }, []);
@@ -210,5 +232,8 @@ export const useWebSocket = (url: string) => {
     reveal,
     setOnNameTaken,
     setParticipantCanControl,
+    addTask,
+    removeTask,
+    updateTask,
   };
 };

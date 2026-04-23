@@ -9,6 +9,9 @@ import { vote } from './backend/events/vote.js';
 import { reset } from './backend/events/reset.js';
 import { reveal } from './backend/events/reveal.js';
 import { setController } from './backend/events/setController.js';
+import { addTask } from './backend/events/addTask.js';
+import { removeTask } from './backend/events/removeTask.js';
+import { updateTask } from './backend/events/updateTask.js';
 import { logger } from './backend/utils/logger.js';
 
 const PORT = process.env.PORT || 8080;
@@ -72,6 +75,24 @@ wss.on('connection', (ws) => {
 
         case 'set_controller': {
           setController(ws, message);
+
+          break;
+        }
+
+        case 'add_task': {
+          void addTask(ws, message);
+
+          break;
+        }
+
+        case 'remove_task': {
+          void removeTask(ws, message);
+
+          break;
+        }
+
+        case 'update_task': {
+          void updateTask(ws, message);
 
           break;
         }

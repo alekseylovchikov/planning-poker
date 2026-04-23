@@ -1,4 +1,5 @@
 import { getDb } from './db.js';
+import { logger } from './utils/logger.js';
 
 export async function saveRoomCreator(roomId, creatorName) {
   try {

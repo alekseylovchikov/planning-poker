@@ -38,6 +38,7 @@ export function getSafeState(client, roomId) {
     }
 
     delete clientState.creatorId;
+    delete clientState.creatorName;
     delete clientState.controllers;
 
     return clientState;
