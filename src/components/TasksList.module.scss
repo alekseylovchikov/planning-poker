@@ -25,6 +25,7 @@
 .item {
   border-radius: 6px;
   transition: background 0.15s;
+  border: 1px solid var(--success);
 
   &:hover {
     background: var(--surface-bg-soft);
