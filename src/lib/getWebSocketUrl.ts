@@ -23,6 +23,16 @@ export const getWebSocketUrl = () => {
       : 'ws://localhost:8080';
   }
 
+  // Для Railway staging/production: пытаемся найти backend домен
+  // Если это staging фронтенд, ищем staging бэкенд
+  if (hostname.includes('frontend-staging')) {
+    return 'wss://planning-poker-server-staging.up.railway.app';
+  }
+
+  if (hostname.includes('frontend')) {
+    return 'wss://planning-poker-server.up.railway.app';
+  }
+
   // Для продакшена используем тот же домен и порт (Railway обычно использует тот же домен)
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const port = window.location.port ? `:${window.location.port}` : '';
