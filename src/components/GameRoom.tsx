@@ -1,10 +1,10 @@
-import { ParticipantsList } from "./ParticipantsList";
-import { VotingCards } from "./VotingCards";
-import { VotingTable } from "./VotingTable";
-import { TasksList } from "./TasksList";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import type { GameState, Participant, VoteValue } from "../types";
-import styles from "./GameRoom.module.scss";
+import { ParticipantsList } from './ParticipantsList';
+import { VotingCards } from './VotingCards';
+import { VotingTable } from './VotingTable';
+import { TasksList } from './TasksList';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import type { GameState, Participant, VoteValue } from '../types';
+import styles from './GameRoom.module.scss';
 
 interface GameRoomProps {
   gameState: GameState;
@@ -69,7 +69,7 @@ export function GameRoom({
 
         <Card>
           <CardHeader>
-            <CardTitle>Задачи</CardTitle>
+            <CardTitle>Задачи ({gameState.tasks?.length || 0})</CardTitle>
           </CardHeader>
           <CardContent>
             <TasksList
