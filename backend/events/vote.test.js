@@ -11,16 +11,22 @@ import { broadcastState } from '../broadcastState.js';
 function makeWs(roomId, userId, sessionToken) {
   // Determine default sessionToken based on userId if not provided
   const defaultTokens = {
-    'u1': 'token123',
-    'stranger': 'token999',
+    u1: 'token123',
+    stranger: 'token999',
   };
-  return { roomId, userId, sessionToken: sessionToken || defaultTokens[userId] || 'token123', send: vi.fn() };
+  return {
+    roomId,
+    userId,
+    sessionToken: sessionToken || defaultTokens[userId] || 'token123',
+    send: vi.fn(),
+  };
 }
 
 function seedRoom(roomId, participants = []) {
   const stateParticipants = participants.map((p) => ({
     ...p,
     sessionToken: p.sessionToken || 'token123', // Use explicit or default token
+  }));
 
   const state = {
     participants: stateParticipants,

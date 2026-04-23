@@ -99,7 +99,15 @@ describe('reset', () => {
 
   it('обычный участник получает ошибку', () => {
     seedRoom('r1', 'u1');
-    const ws = makeWs('r1', 'regular');
+    // Add regular participant
+    rooms.get('r1').participants.push({
+      id: 'regular',
+      name: 'Regular',
+      vote: undefined,
+      hasVoted: false,
+      sessionToken: 'token_regular',
+    });
+    const ws = makeWs('r1', 'regular', 'token_regular');
 
     reset(ws);
 

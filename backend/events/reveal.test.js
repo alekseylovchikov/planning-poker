@@ -77,7 +77,13 @@ describe('reveal', () => {
 
   it('обычный участник получает ошибку', () => {
     seedRoom('r1', 'creator1');
-    const ws = makeWs('r1', 'regular');
+    // Add regular participant
+    rooms.get('r1').participants.push({
+      id: 'regular',
+      name: 'Regular',
+      sessionToken: 'token_regular',
+    });
+    const ws = makeWs('r1', 'regular', 'token_regular');
 
     reveal(ws);
 
