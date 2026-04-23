@@ -31,12 +31,24 @@ export const wss = new WebSocketServer({
     // Allow requests without origin (e.g., native clients) or matching allowed origins
     if (!origin || allowedOrigins.includes(origin)) {
       callback(true);
-    } else {
-      logger.warn(
-        `Rejected WebSocket connection from unauthorized origin: ${origin}`,
-      );
-
-      callback(false, 403, 'Unauthorized origin');
+      return;
     }
+
+    // Allow any *.up.railway.app subdomain (Railway deployments)
+    try {
+      const { hostname } = new URL(origin);
+      if (hostname.endsWith('.up.railway.app')) {
+        callback(true);
+        return;
+      }
+    } catch {
+      // ignore parse errors, fall through to reject
+    }
+
+    logger.warn(
+      `Rejected WebSocket connection from unauthorized origin: ${origin}`,
+    );
+
+    callback(false, 403, 'Unauthorized origin');
   },
 });
