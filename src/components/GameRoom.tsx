@@ -69,7 +69,7 @@ export function GameRoom({
 
         <Card>
           <CardHeader>
-            <CardTitle>Задачи ({gameState.tasks?.length})</CardTitle>
+            <CardTitle>Задачи ({gameState.tasks?.length ?? '0'})</CardTitle>
           </CardHeader>
           <CardContent>
             <TasksList
