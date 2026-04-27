@@ -17,6 +17,7 @@ describe("createRoom", () => {
       roomId: "room1",
       creatorId: null,
       controllers: [],
+      tasks: [],
     });
     expect(rooms.has("room1")).toBe(true);
   });

@@ -1,5 +1,6 @@
 import { broadcastState } from '../broadcastState.js';
 import { rooms } from '../rooms.js';
+import { persistRoomState } from '../roomStateDb.js';
 
 export function reveal(ws) {
   if (!ws.roomId || !ws.userId) return;
@@ -29,5 +30,6 @@ export function reveal(ws) {
 
   gameState.votesRevealed = true;
 
+  void persistRoomState(ws.roomId, gameState);
   broadcastState(ws.roomId);
 }

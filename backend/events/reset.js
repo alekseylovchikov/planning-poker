@@ -1,5 +1,6 @@
 import { rooms } from '../rooms.js';
 import { broadcastState } from '../broadcastState.js';
+import { persistRoomState } from '../roomStateDb.js';
 
 export function reset(ws)  {
   if (!ws.roomId || !ws.userId) return;
@@ -36,5 +37,6 @@ export function reset(ws)  {
   gameState.votesRevealed = false;
   gameState.currentVotes = {};
 
+  void persistRoomState(ws.roomId, gameState);
   broadcastState(ws.roomId);
 }

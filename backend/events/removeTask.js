@@ -1,6 +1,7 @@
 import { rooms } from '../rooms.js';
 import { broadcastState } from '../broadcastState.js';
 import { removeTask as removeTaskFromDb } from '../tasksDb.js';
+import { persistRoomState } from '../roomStateDb.js';
 
 export async function removeTask(ws, message) {
   if (!ws.roomId || !ws.userId) return;
@@ -27,5 +28,6 @@ export async function removeTask(ws, message) {
     gameState.tasks = gameState.tasks.filter((t) => t.taskId !== taskId);
   }
 
+  await persistRoomState(ws.roomId, gameState);
   broadcastState(ws.roomId);
 }

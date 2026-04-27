@@ -1,5 +1,6 @@
 import { rooms } from '../rooms.js';
 import { broadcastState } from '../broadcastState.js';
+import { persistRoomState } from '../roomStateDb.js';
 
 export function vote(ws, message) {
   if (!ws.roomId || !ws.userId) return;
@@ -19,6 +20,7 @@ export function vote(ws, message) {
     participant.hasVoted = true;
     gameState.currentVotes[participant.id] = vote;
 
+    void persistRoomState(ws.roomId, gameState);
     broadcastState(ws.roomId);
   }
 }

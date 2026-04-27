@@ -4,14 +4,84 @@ import type { GameState, VoteValue, WebSocketMessage } from "../types";
 const RECONNECT_DELAY_MS = 3000;
 /** Минимальное время скрытия вкладки (мс), после которого при показе делаем переподключение */
 const VISIBILITY_RECONNECT_THRESHOLD_MS = 15000;
+const SESSION_ROOM_STATE_PREFIX = "planning-poker:room-state:";
+
+function getStorageKey(roomId: string) {
+  return `${SESSION_ROOM_STATE_PREFIX}${roomId}`;
+}
+
+function getRoomIdFromUrl() {
+  if (typeof window === "undefined") return null;
+
+  return new URLSearchParams(window.location.search).get("room");
+}
+
+function getInitialStateFromSession(): GameState {
+  if (typeof window === "undefined") {
+    return {
+      participants: [],
+      votesRevealed: false,
+      currentVotes: {},
+    };
+  }
+
+  const roomId = getRoomIdFromUrl();
+
+  if (!roomId) {
+    return {
+      participants: [],
+      votesRevealed: false,
+      currentVotes: {},
+    };
+  }
+
+  try {
+    const raw = window.sessionStorage.getItem(getStorageKey(roomId));
+
+    if (!raw) {
+      return {
+        participants: [],
+        votesRevealed: false,
+        currentVotes: {},
+      };
+    }
+
+    const parsed = JSON.parse(raw) as GameState;
+
+    return {
+      roomId,
+      participants: Array.isArray(parsed.participants) ? parsed.participants : [],
+      votesRevealed: Boolean(parsed.votesRevealed),
+      currentVotes:
+        parsed.currentVotes && typeof parsed.currentVotes === "object"
+          ? parsed.currentVotes
+          : {},
+      isCreator: Boolean(parsed.isCreator),
+      canControlVotes: Boolean(parsed.canControlVotes),
+      tasks: Array.isArray(parsed.tasks) ? parsed.tasks : [],
+    };
+  } catch {
+    return {
+      participants: [],
+      votesRevealed: false,
+      currentVotes: {},
+    };
+  }
+}
+
+function saveStateToSession(state: GameState) {
+  if (typeof window === "undefined" || !state.roomId) return;
+
+  try {
+    window.sessionStorage.setItem(getStorageKey(state.roomId), JSON.stringify(state));
+  } catch {
+    // ignore sessionStorage errors
+  }
+}
 
 export const useWebSocket = (url: string) => {
   const [isConnected, setIsConnected] = useState(false);
-  const [gameState, setGameState] = useState<GameState>({
-    participants: [],
-    votesRevealed: false,
-    currentVotes: {},
-  });
+  const [gameState, setGameState] = useState<GameState>(() => getInitialStateFromSession());
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
@@ -25,8 +95,7 @@ export const useWebSocket = (url: string) => {
       case "state":
         if (message.payload) {
           const state = message.payload as GameState;
-          // Создаем новый объект для гарантии обновления React
-          setGameState({
+          const nextState: GameState = {
             roomId: state.roomId,
             participants: [...(state.participants || [])],
             votesRevealed: state.votesRevealed || false,
@@ -34,7 +103,12 @@ export const useWebSocket = (url: string) => {
             isCreator: state.isCreator || false,
             canControlVotes: state.canControlVotes || false,
             tasks: [...(state.tasks || [])],
-          });
+          };
+
+          saveStateToSession(nextState);
+
+          // Создаем новый объект для гарантии обновления React
+          setGameState(nextState);
           setError(null);
         }
         break;

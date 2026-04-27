@@ -8,6 +8,10 @@ import {
   getRoomCreatorName,
   saveRoomCreator,
 } from '../roomCreatorsDb.js';
+import {
+  loadRoomState,
+  persistRoomState,
+} from '../roomStateDb.js';
 import { getTasksByRoom } from '../tasksDb.js';
 import { rooms } from '../rooms.js';
 import { wss } from '../wss.js';
@@ -51,9 +55,18 @@ export async function join(ws, message) {
   let gameState = rooms.get(roomId);
 
   if (!gameState) {
-    gameState = createRoom(roomId);
+    const storedState = await loadRoomState(roomId);
 
-    if (requestedRoomId) {
+    if (storedState) {
+      gameState = storedState;
+      rooms.set(roomId, gameState);
+
+      logger.info(`Комната ${roomId} восстановлена из MongoDB.`);
+    } else {
+      gameState = createRoom(roomId);
+    }
+
+    if (requestedRoomId && !storedState) {
       logger.info(
         `Комната ${roomId} не найдена в памяти, восстанавливаем из БД.`,
       );
@@ -149,6 +162,8 @@ export async function join(ws, message) {
       }
     }
   }
+
+  await persistRoomState(roomId, gameState);
 
   try {
     const safeState = getSafeState(ws, roomId);

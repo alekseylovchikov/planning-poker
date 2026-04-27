@@ -21,6 +21,11 @@ vi.mock("../roomCreatorsDb.js", () => ({
   saveRoomCreator: vi.fn(),
 }));
 
+vi.mock("../roomStateDb.js", () => ({
+  loadRoomState: vi.fn(() => null),
+  persistRoomState: vi.fn(() => true),
+}));
+
 vi.mock("../wss.js", () => ({
   wss: { clients: new Set() },
 }));

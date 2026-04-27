@@ -1,6 +1,7 @@
 import { createdServer as server } from './backend/createdServer.js';
 import { getDb } from './backend/db.js';
 import { rooms } from './backend/rooms.js';
+import { persistRoomState } from './backend/roomStateDb.js';
 import { updateOnlineStatus } from './backend/updateOnlineStatus.js';
 import { wss } from './backend/wss.js';
 // events
@@ -114,6 +115,8 @@ wss.on('connection', (ws) => {
 
           if (participant) {
             participant.isOnline = false;
+
+            void persistRoomState(ws.roomId, gameState);
           }
         }
       }

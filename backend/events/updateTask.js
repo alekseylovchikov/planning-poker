@@ -1,6 +1,7 @@
 import { rooms } from '../rooms.js';
 import { broadcastState } from '../broadcastState.js';
 import { updateTask as updateTaskInDb } from '../tasksDb.js';
+import { persistRoomState } from '../roomStateDb.js';
 
 export async function updateTask(ws, message) {
   if (!ws.roomId || !ws.userId) return;
@@ -37,5 +38,6 @@ export async function updateTask(ws, message) {
     }
   }
 
+  await persistRoomState(ws.roomId, gameState);
   broadcastState(ws.roomId);
 }

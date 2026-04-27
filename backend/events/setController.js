@@ -1,5 +1,6 @@
 import { broadcastState } from '../broadcastState.js';
 import { rooms } from '../rooms.js';
+import { persistRoomState } from '../roomStateDb.js';
 
 export function setController(ws, message) {
   if (!ws.roomId || !ws.userId) return;
@@ -43,5 +44,6 @@ export function setController(ws, message) {
     gameState.controllers.splice(index, 1);
   }
 
+  void persistRoomState(ws.roomId, gameState);
   broadcastState(ws.roomId);
 }

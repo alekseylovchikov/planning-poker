@@ -2,6 +2,7 @@ import { rooms } from '../rooms.js';
 import { broadcastState } from '../broadcastState.js';
 import { addTask as addTaskToDb } from '../tasksDb.js';
 import { generateId } from '../generateId.js';
+import { persistRoomState } from '../roomStateDb.js';
 
 export async function addTask(ws, message) {
   if (!ws.roomId || !ws.userId) return;
@@ -56,5 +57,6 @@ export async function addTask(ws, message) {
   }
 
   gameState.tasks.push(task);
+  await persistRoomState(ws.roomId, gameState);
   broadcastState(ws.roomId);
 }
