@@ -25,6 +25,10 @@ export const createdServer = http.createServer((req, res) => {
 
     const candidates = [];
 
+    if (pathname === '/sw.js') {
+      candidates.push(join(__dirname, 'sw.js'));
+    }
+
     if (pathname !== '/') {
       candidates.push(join(__dirname, 'dist', pathname));
       candidates.push(join(__dirname, 'public', pathname));
