@@ -71,7 +71,12 @@ export const createdServer = http.createServer((req, res) => {
 
       try {
         const content = readFileSync(filePath);
-        res.writeHead(200, { 'Content-Type': contentType });
+        const headers = { 'Content-Type': contentType };
+        if (pathname === '/sw.js') {
+          headers['Service-Worker-Allowed'] = '/';
+          headers['Cache-Control'] = 'no-cache';
+        }
+        res.writeHead(200, headers);
         res.end(content);
       } catch (err) {
         logger.error('Error serving file:', err);
