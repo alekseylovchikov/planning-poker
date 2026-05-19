@@ -13,7 +13,9 @@ export async function updateTask(ws, message) {
     ws.send(
       JSON.stringify({
         type: 'error',
-        payload: { message: 'Только создатель комнаты может редактировать задачи' },
+        payload: {
+          message: 'Только создатель комнаты может редактировать задачи',
+        },
       }),
     );
     return;
