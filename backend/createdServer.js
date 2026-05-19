@@ -21,37 +21,62 @@ export const createdServer = http.createServer((req, res) => {
     );
     let pathname = parsedUrl.pathname;
 
-    let filePath = join(
-      __dirname,
-      'dist',
-      pathname === '/' ? 'index.html' : pathname,
-    );
+    const isFileRequest = pathname !== '/' && /\.[^/]+$/.test(pathname);
 
-    if (
-      !existsSync(filePath) ||
-      (existsSync(filePath) && statSync(filePath).isDirectory())
-    ) {
-      filePath = join(__dirname, 'dist', 'index.html');
+    const candidates = [];
+
+    if (pathname === '/sw.js') {
+      candidates.push(join(__dirname, 'sw.js'));
     }
 
-    if (existsSync(filePath) && !statSync(filePath).isDirectory()) {
-      const ext = filePath.split('.').pop();
+    if (pathname !== '/') {
+      candidates.push(join(__dirname, 'dist', pathname));
+      candidates.push(join(__dirname, 'public', pathname));
+    }
+
+    if (!isFileRequest) {
+      candidates.push(join(__dirname, 'dist', 'index.html'));
+    }
+
+    let filePath = candidates.find(
+      (p) => existsSync(p) && !statSync(p).isDirectory(),
+    );
+
+    if (filePath) {
+      const ext = filePath.split('.').pop().toLowerCase();
       const contentTypes = {
         html: 'text/html',
         js: 'application/javascript',
+        mjs: 'application/javascript',
         css: 'text/css',
         json: 'application/json',
         png: 'image/png',
         jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        gif: 'image/gif',
+        webp: 'image/webp',
         svg: 'image/svg+xml',
         ico: 'image/x-icon',
+        mp3: 'audio/mpeg',
+        wav: 'audio/wav',
+        ogg: 'audio/ogg',
+        woff: 'font/woff',
+        woff2: 'font/woff2',
+        ttf: 'font/ttf',
+        txt: 'text/plain',
+        map: 'application/json',
       };
 
       const contentType = contentTypes[ext] || 'application/octet-stream';
 
       try {
         const content = readFileSync(filePath);
-        res.writeHead(200, { 'Content-Type': contentType });
+        const headers = { 'Content-Type': contentType };
+        if (pathname === '/sw.js') {
+          headers['Service-Worker-Allowed'] = '/';
+          headers['Cache-Control'] = 'no-cache';
+        }
+        res.writeHead(200, headers);
         res.end(content);
       } catch (err) {
         logger.error('Error serving file:', err);
